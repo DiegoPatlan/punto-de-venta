@@ -39,6 +39,7 @@ function aplicarCORS(res, origin) {
     const origenesPermitidos = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://punto-de-ventasit.vercel.app",
     ];
 
     if (origenesPermitidos.includes(origin)) {
