@@ -618,7 +618,7 @@ export default function POSLayout({
             {menuMovilAbierto && (
                 <div className="fixed inset-x-0 top-[68px] z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl sm:top-[72px] lg:hidden">
 
-                    <div className="max-h-[calc(100vh-68px)] overflow-y-auto p-3 sm:max-h-[calc(100vh-72px)] sm:p-4">
+                    <div className="max-h-[calc(100vh-68px)] overflow-y-auto p-3 pb-24 sm:max-h-[calc(100vh-72px)] sm:p-4 sm:pb-24">
 
                         <div className="mb-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
 
