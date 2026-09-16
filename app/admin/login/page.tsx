@@ -51,9 +51,6 @@ export default function AdminLoginPage() {
                 return;
             }
 
-            console.log("Usuario autenticado:", usuario);
-            console.log("Rol:", usuario.rol);
-
             if (usuario.rol !== "admin") {
                 await supabase.auth.signOut();
 

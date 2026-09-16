@@ -7,6 +7,7 @@ import {
     type UsuarioActual,
 } from "../../lib/auth/roleGuard";
 import Card from "../components/Card";
+import ModalMensaje from "../components/ModalMensaje";
 import { supabase } from "../../lib/supabase";
 
 /* =========================================================
@@ -202,6 +203,24 @@ export default function AdminDashboardPage() {
     const [error, setError] =
         useState("");
 
+    const [modalMensajeAbierto, setModalMensajeAbierto] =
+        useState(false);
+
+    const [tipoMensaje, setTipoMensaje] =
+        useState<"info" | "error" | "exito" | "confirmacion">("info");
+
+    const [tituloMensaje, setTituloMensaje] =
+        useState("");
+
+    const [textoMensaje, setTextoMensaje] =
+        useState("");
+
+    const [metodoPagoActivo, setMetodoPagoActivo] =
+        useState<string | null>(null);
+
+    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] =
+        useState<string | null>(null);
+
     const [actualizando, setActualizando] =
         useState(false);
 
@@ -213,6 +232,21 @@ export default function AdminDashboardPage() {
 
     const puntoGrafica =
         puntoActivo ?? puntoSeleccionado;
+
+    const mostrarMensaje = (
+        tipo: "info" | "error" | "exito" | "confirmacion",
+        titulo: string,
+        mensaje: string
+    ) => {
+        setTipoMensaje(tipo);
+        setTituloMensaje(titulo);
+        setTextoMensaje(mensaje);
+        setModalMensajeAbierto(true);
+    };
+
+    const cerrarModalMensaje = () => {
+        setModalMensajeAbierto(false);
+    };
 
     /* =====================================================
        CARGAR DASHBOARD
@@ -1930,16 +1964,19 @@ export default function AdminDashboardPage() {
 
                 setPuntoActivo(null);
                 setPuntoSeleccionado(null);
+                setMetodoPagoActivo(null);
+                setMetodoPagoSeleccionado(null);
             } catch (err) {
-                console.error(
-                    "Error cargando Dashboard:",
-                    err
-                );
-
-                setError(
+                const mensaje =
                     err instanceof Error
                         ? err.message
-                        : "No se pudo cargar el Dashboard. Intenta nuevamente."
+                        : "No se pudo cargar el Dashboard. Intenta nuevamente.";
+
+                setError(mensaje);
+                mostrarMensaje(
+                    "error",
+                    "No se pudo cargar el dashboard",
+                    mensaje
                 );
             } finally {
                 setCargando(false);
@@ -2149,17 +2186,17 @@ export default function AdminDashboardPage() {
     if (error || !datos) {
         return (
             <div className="space-y-5 pb-8">
-                <div className="overflow-hidden rounded-[30px] border border-red-200 bg-[var(--color-surface)] shadow-lg shadow-red-100/40">
+                <div className="overflow-hidden rounded-[30px] border border-[var(--color-danger)]/20 bg-[var(--color-surface)] shadow-lg shadow-red-100/40">
                     <div className="h-2 bg-gradient-to-r from-red-700 via-red-500 to-orange-400" />
 
                     <div className="p-6 sm:p-8">
                         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-2xl">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-danger)]/10 text-2xl">
                                 ⚠️
                             </div>
 
                             <div className="flex-1">
-                                <p className="text-xs font-black uppercase tracking-[0.18em] text-red-500">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--color-danger)]">
                                     Dashboard
                                 </p>
 
@@ -2170,8 +2207,8 @@ export default function AdminDashboardPage() {
                                 </h2>
 
                                 <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
-                                    {error ||
-                                        "Ocurrió un error inesperado."}
+                                    No fue posible obtener los datos del dashboard.
+                                    Puedes intentar cargarlo nuevamente.
                                 </p>
 
                                 <button
@@ -2426,7 +2463,7 @@ export default function AdminDashboardPage() {
                     </Card>
 
                     {/* Por cobrar */}
-                    <Card className="group overflow-hidden border-orange-100 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                    <Card className="group overflow-hidden border-[var(--color-warning)]/20 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
 
                         <div className="flex items-start justify-between">
 
@@ -2435,7 +2472,7 @@ export default function AdminDashboardPage() {
                                     Por cobrar
                                 </p>
 
-                                <p className="mt-3 text-3xl font-black tracking-tight text-orange-600">
+                                <p className="mt-3 text-3xl font-black tracking-tight text-[var(--color-warning)]">
                                     {formatearMoneda(
                                         datos.cuentasPorCobrar
                                     )}
@@ -2446,7 +2483,7 @@ export default function AdminDashboardPage() {
                                 </p>
                             </div>
 
-                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-xl">
+                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-warning)]/10 text-xl">
                                 💳
                             </span>
 
@@ -2454,7 +2491,7 @@ export default function AdminDashboardPage() {
 
                     </Card>
                     {/* Stock */}
-                    <Card className="group overflow-hidden border-amber-100 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                    <Card className="group overflow-hidden border-[var(--color-warning)]/20 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
 
                         <div className="flex items-start justify-between">
 
@@ -2477,8 +2514,8 @@ export default function AdminDashboardPage() {
 
                             <span
                                 className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xl ${datos.stockBajo
-                                    ? "bg-amber-50"
-                                    : "bg-emerald-50"
+                                    ? "bg-[var(--color-warning)]/10"
+                                    : "bg-[var(--color-success)]/10"
                                     }`}
                             >
                                 {datos.stockBajo
@@ -2504,7 +2541,7 @@ export default function AdminDashboardPage() {
                         Devoluciones
                     </p>
 
-                    <p className="mt-2 text-2xl font-black text-red-600">
+                    <p className="mt-2 text-2xl font-black text-[var(--color-danger)]">
                         -{formatearMoneda(
                             datos.devoluciones
                         )}
@@ -2531,12 +2568,12 @@ export default function AdminDashboardPage() {
                     </p>
                 </Card>
 
-                <Card className="border-red-100 p-5">
+                <Card className="border-[var(--color-danger)]/20 p-5">
                     <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
                         Por pagar
                     </p>
 
-                    <p className="mt-2 text-2xl font-black text-red-600">
+                    <p className="mt-2 text-2xl font-black text-[var(--color-danger)]">
                         {formatearMoneda(
                             datos.cuentasPorPagar
                         )}
@@ -2547,12 +2584,12 @@ export default function AdminDashboardPage() {
                     </p>
                 </Card>
 
-                <Card className="border-orange-100 p-5">
+                <Card className="border-[var(--color-warning)]/20 p-5">
                     <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
                         Gastos de hoy
                     </p>
 
-                    <p className="mt-2 text-2xl font-black text-orange-600">
+                    <p className="mt-2 text-2xl font-black text-[var(--color-warning)]">
                         {formatearMoneda(
                             datos.gastosHoy
                         )}
@@ -2571,7 +2608,7 @@ export default function AdminDashboardPage() {
 
             <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[var(--color-secondary)] via-[var(--color-primary)] to-[var(--color-primary-hover)] text-white shadow-xl shadow-[var(--color-secondary)]/20">
 
-                <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[var(--color-primary)]/100/20 blur-3xl" />
+                <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[var(--color-primary)]/20 blur-3xl" />
 
                 <div className="relative p-6 sm:p-7">
 
@@ -2636,7 +2673,7 @@ export default function AdminDashboardPage() {
                                 estimado
                             </p>
 
-                            <p className="mt-2 text-lg font-black text-red-200">
+                            <p className="mt-2 text-lg font-black text-[var(--color-danger)]">
                                 -
                                 {formatearMoneda(
                                     datos.costoVentas
@@ -3197,14 +3234,13 @@ export default function AdminDashboardPage() {
                                                 acumulado +=
                                                     longitud;
 
+                                                const metodoEnfocado =
+                                                    metodoPagoActivo ??
+                                                    metodoPagoSeleccionado;
+
                                                 const activo =
-                                                    puntoSeleccionado ===
-                                                    null ||
-                                                    metodoActivoLocal(
-                                                        metodo,
-                                                        metodosPago,
-                                                        puntoSeleccionado
-                                                    );
+                                                    metodoEnfocado === null ||
+                                                    metodo.nombre === metodoEnfocado;
 
                                                 return (
                                                     <circle
@@ -3254,7 +3290,7 @@ export default function AdminDashboardPage() {
                                 </span>
 
                                 <span className="mt-1 text-[10px] font-semibold text-[var(--color-text-secondary)]">
-                                    cobrado hoy
+                                    pagos registrados
                                 </span>
 
                             </div>
@@ -3280,7 +3316,23 @@ export default function AdminDashboardPage() {
                                             key={
                                                 metodo.nombre
                                             }
-                                            className="rounded-xl p-2.5 transition hover:bg-[var(--color-primary)]/10"
+                                            className={`cursor-pointer rounded-xl p-2.5 transition hover:bg-[var(--color-primary)]/10 ${metodoPagoSeleccionado === metodo.nombre
+                                                ? "bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/20"
+                                                : ""
+                                                }`}
+                                            onMouseEnter={() =>
+                                                setMetodoPagoActivo(metodo.nombre)
+                                            }
+                                            onMouseLeave={() =>
+                                                setMetodoPagoActivo(null)
+                                            }
+                                            onClick={() =>
+                                                setMetodoPagoSeleccionado(
+                                                    metodoPagoSeleccionado === metodo.nombre
+                                                        ? null
+                                                        : metodo.nombre
+                                                )
+                                            }
                                         >
 
                                             <div className="flex items-center justify-between">
@@ -3307,7 +3359,7 @@ export default function AdminDashboardPage() {
 
                                             <div className="mt-2 flex items-center gap-2">
 
-                                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-background)]">
 
                                                     <div
                                                         className={`h-full rounded-full ${colores[index]} transition-all`}
@@ -3419,11 +3471,11 @@ export default function AdminDashboardPage() {
 
                 </Card>
 
-                <Card className="overflow-hidden border-amber-100">
+                <Card className="overflow-hidden border-[var(--color-warning)]/20">
 
                     <div className="border-b border-[var(--color-border)] px-5 py-5">
 
-                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-600">
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--color-warning)]">
                             INVENTARIO
                         </p>
 
@@ -3445,10 +3497,10 @@ export default function AdminDashboardPage() {
                                         key={
                                             producto.id
                                         }
-                                        className="flex items-center gap-4 px-5 py-4 transition hover:bg-amber-50/40"
+                                        className="flex items-center gap-4 px-5 py-4 transition hover:bg-[var(--color-warning)]/10/40"
                                     >
 
-                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-lg">
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-warning)]/10 text-lg">
                                             ⚠️
                                         </span>
 
@@ -3474,7 +3526,7 @@ export default function AdminDashboardPage() {
 
                                         <div className="text-right">
 
-                                            <p className="text-xl font-black text-amber-600">
+                                            <p className="text-xl font-black text-[var(--color-warning)]">
                                                 {
                                                     producto.stock
                                                 }
@@ -3494,11 +3546,11 @@ export default function AdminDashboardPage() {
                     ) : (
                         <div className="px-5 py-12 text-center">
 
-                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-2xl text-emerald-600">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-success)]/10 text-2xl text-[var(--color-success)]">
                                 ✓
                             </div>
 
-                            <p className="mt-4 text-sm font-black text-emerald-700">
+                            <p className="mt-4 text-sm font-black text-[var(--color-success)]">
                                 Inventario en
                                 buen estado
                             </p>
@@ -3522,11 +3574,11 @@ export default function AdminDashboardPage() {
 
             <section className="grid gap-5 lg:grid-cols-2">
 
-                <Card className="overflow-hidden border-orange-100">
+                <Card className="overflow-hidden border-[var(--color-warning)]/20">
 
                     <div className="border-b border-[var(--color-border)] px-5 py-5">
 
-                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-600">
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--color-warning)]">
                             CLIENTES
                         </p>
 
@@ -3548,10 +3600,10 @@ export default function AdminDashboardPage() {
                                         key={
                                             cliente.id
                                         }
-                                        className="flex items-center gap-4 px-5 py-4 transition hover:bg-orange-50/40"
+                                        className="flex items-center gap-4 px-5 py-4 transition hover:bg-[var(--color-warning)]/10/40"
                                     >
 
-                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-lg">
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-warning)]/10 text-lg">
                                             👤
                                         </span>
 
@@ -3570,7 +3622,7 @@ export default function AdminDashboardPage() {
 
                                         </div>
 
-                                        <span className="text-sm font-black text-orange-600">
+                                        <span className="text-sm font-black text-[var(--color-warning)]">
                                             {formatearMoneda(
                                                 cliente.saldo
                                             )}
@@ -3712,8 +3764,8 @@ export default function AdminDashboardPage() {
 
                                             <div
                                                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${esVenta
-                                                    ? "bg-emerald-50 text-emerald-600"
-                                                    : "bg-amber-50 text-amber-600"
+                                                    ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
+                                                    : "bg-[var(--color-warning)]/10 text-[var(--color-warning)]"
                                                     }`}
                                             >
                                                 {esVenta
@@ -3815,8 +3867,8 @@ export default function AdminDashboardPage() {
 
                                                         <p
                                                             className={`text-lg font-black ${esVenta
-                                                                ? "text-emerald-600"
-                                                                : "text-red-600"
+                                                                ? "text-[var(--color-success)]"
+                                                                : "text-[var(--color-danger)]"
                                                                 }`}
                                                         >
                                                             {esVenta
@@ -3841,8 +3893,8 @@ export default function AdminDashboardPage() {
 
                                                     <span
                                                         className={`rounded-full px-2.5 py-1 text-[10px] font-black ${esVenta
-                                                            ? "bg-emerald-50 text-emerald-700"
-                                                            : "bg-amber-50 text-amber-700"
+                                                            ? "bg-[var(--color-success)]/10 text-[var(--color-success)]"
+                                                            : "bg-[var(--color-warning)]/10 text-[var(--color-warning)]"
                                                             }`}
                                                     >
                                                         {esVenta
@@ -3850,7 +3902,7 @@ export default function AdminDashboardPage() {
                                                             : "Devolución"}
                                                     </span>
 
-                                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-[var(--color-text-secondary)]">
+                                                    <span className="rounded-full bg-[var(--color-background)] px-2.5 py-1 text-[10px] font-black text-[var(--color-text-secondary)]">
                                                         {esVenta
                                                             ? obtenerMetodoPago(
                                                                 actividad.metodo
@@ -3860,7 +3912,7 @@ export default function AdminDashboardPage() {
                                                             )}`}
                                                     </span>
 
-                                                    <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-[var(--color-text-secondary)]">
+                                                    <span className="rounded-full bg-[var(--color-background)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-text-secondary)]">
                                                         {formatearFechaCorta(
                                                             actividad.fecha
                                                         )}
@@ -3909,8 +3961,8 @@ export default function AdminDashboardPage() {
 
                     <div
                         className={`rounded-2xl border p-4 ${datos.stockBajo
-                            ? "border-amber-200 bg-amber-50"
-                            : "border-emerald-200 bg-emerald-50"
+                            ? "border-[var(--color-warning)]/20 bg-[var(--color-warning)]/10"
+                            : "border-[var(--color-success)]/20 bg-[var(--color-success)]/10"
                             }`}
                     >
 
@@ -3945,8 +3997,8 @@ export default function AdminDashboardPage() {
                     <div
                         className={`rounded-2xl border p-4 ${datos.cuentasPorCobrar >
                             0
-                            ? "border-orange-200 bg-orange-50"
-                            : "border-emerald-200 bg-emerald-50"
+                            ? "border-[var(--color-warning)]/20 bg-[var(--color-warning)]/10"
+                            : "border-[var(--color-success)]/20 bg-[var(--color-success)]/10"
                             }`}
                     >
 
@@ -3982,8 +4034,8 @@ export default function AdminDashboardPage() {
                     <div
                         className={`rounded-2xl border p-4 ${datos.cuentasPorPagar >
                             0
-                            ? "border-red-200 bg-red-50"
-                            : "border-emerald-200 bg-emerald-50"
+                            ? "border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10"
+                            : "border-[var(--color-success)]/20 bg-[var(--color-success)]/10"
                             }`}
                     >
 
@@ -4019,35 +4071,15 @@ export default function AdminDashboardPage() {
                 </div>
             </Card>
 
+            <ModalMensaje
+                abierto={modalMensajeAbierto}
+                tipo={tipoMensaje}
+                titulo={tituloMensaje}
+                mensaje={textoMensaje}
+                textoBoton="Aceptar"
+                onCerrar={cerrarModalMensaje}
+            />
+
         </div>
     );
-}
-
-/* =========================================================
-   HELPER PARA EL DONUT
-========================================================= */
-
-function metodoActivoLocal(
-    metodo: {
-        nombre: string;
-        valor: number;
-        porcentaje: number;
-    },
-    metodos: {
-        nombre: string;
-        valor: number;
-        porcentaje: number;
-    }[],
-    indice: number
-) {
-    if (
-        !metodos.length ||
-        indice < 0 ||
-        indice >= metodos.length
-    ) {
-        return true;
-    }
-
-    return metodo.nombre ===
-        metodos[indice]?.nombre;
 }

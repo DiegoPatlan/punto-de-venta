@@ -675,11 +675,21 @@ export default function CerrarCajaPage() {
                         }
                     });
                 }
-
                 /*
                  * ============================================
                  * DEVOLUCIONES
                  * ============================================
+                 *
+                 * IMPORTANTE:
+                 * La sesión de una devolución NO necesariamente
+                 * es la misma sesión de la venta original.
+                 *
+                 * Por eso las devoluciones se buscan por:
+                 *
+                 * devoluciones.sesion_caja_id
+                 *
+                 * y NO por venta_id dentro de las ventas
+                 * de la sesión actual.
                  */
 
                 let resumenDev:
@@ -692,117 +702,110 @@ export default function CerrarCajaPage() {
                     total: 0,
                 };
 
+                const {
+                    data: devolucionesData,
+                    error:
+                    errorDevoluciones,
+                } = await supabasePOS
+                    .from("devoluciones")
+                    .select(`
+        id,
+        venta_id,
+        monto_total,
+        metodo_reembolso,
+        estado,
+        created_at
+    `)
+                    .eq(
+                        "sesion_caja_id",
+                        sesionData.id
+                    );
+
                 if (
-                    ventaIds.length > 0
+                    errorDevoluciones
                 ) {
-                    const {
-                        data: devolucionesData,
-                        error:
-                        errorDevoluciones,
-                    } =
-                        await supabasePOS
-                            .from(
-                                "devoluciones"
-                            )
-                            .select(`
-                                id,
-                                venta_id,
-                                monto_total,
-                                metodo_reembolso,
-                                estado,
-                                created_at
-                            `)
-                            .in(
-                                "venta_id",
-                                ventaIds
-                            );
-
-                    if (
+                    console.error(
+                        "Error obteniendo devoluciones:",
                         errorDevoluciones
-                    ) {
-                        console.error(
-                            "Error obteniendo devoluciones:",
-                            errorDevoluciones
-                        );
-                    } else {
+                    );
+                } else {
+                    (
+                        devolucionesData as
+                        Devolucion[] ??
+                        []
+                    ).forEach(
                         (
-                            devolucionesData as
-                            Devolucion[] ??
-                            []
-                        ).forEach(
-                            (
-                                devolucion
-                            ) => {
-                                const estado =
-                                    normalizarTexto(
-                                        devolucion.estado
-                                    );
+                            devolucion
+                        ) => {
+                            const estado =
+                                normalizarTexto(
+                                    devolucion.estado
+                                );
 
-                                if (
-                                    estado &&
-                                    ![
-                                        "completada",
-                                        "completado",
-                                        "aprobada",
-                                        "aprobado",
-                                    ].includes(
-                                        estado
-                                    )
-                                ) {
-                                    return;
-                                }
-
-                                const monto =
-                                    Number(
-                                        devolucion.monto_total ??
-                                        0
-                                    );
-
-                                if (
-                                    monto <= 0
-                                ) {
-                                    return;
-                                }
-
-                                const metodo =
-                                    normalizarMetodo(
-                                        devolucion.metodo_reembolso
-                                    );
-
-                                resumenDev.total +=
-                                    monto;
-
-                                if (
-                                    metodo ===
-                                    "efectivo"
-                                ) {
-                                    resumenDev.efectivo +=
-                                        monto;
-                                } else if (
-                                    metodo ===
-                                    "tarjeta"
-                                ) {
-                                    resumenDev.tarjeta +=
-                                        monto;
-                                } else if (
-                                    metodo ===
-                                    "transferencia"
-                                ) {
-                                    resumenDev.transferencia +=
-                                        monto;
-                                } else if (
-                                    metodo ===
-                                    "mixto"
-                                ) {
-                                    resumenDev.mixto +=
-                                        monto;
-                                } else {
-                                    resumenDev.otros +=
-                                        monto;
-                                }
+                            if (
+                                estado &&
+                                ![
+                                    "completada",
+                                    "completado",
+                                    "aprobada",
+                                    "aprobado",
+                                ].includes(
+                                    estado
+                                )
+                            ) {
+                                return;
                             }
-                        );
-                    }
+
+                            const monto =
+                                Number(
+                                    devolucion.monto_total ??
+                                    0
+                                );
+
+                            if (
+                                monto <= 0
+                            ) {
+                                return;
+                            }
+
+                            const metodo =
+                                normalizarMetodo(
+                                    devolucion.metodo_reembolso
+                                );
+
+                            resumenDev.total +=
+                                monto;
+
+                            if (
+                                metodo ===
+                                "efectivo"
+                            ) {
+                                resumenDev.efectivo +=
+                                    monto;
+                            } else if (
+                                metodo ===
+                                "tarjeta"
+                            ) {
+                                resumenDev.tarjeta +=
+                                    monto;
+                            } else if (
+                                metodo ===
+                                "transferencia"
+                            ) {
+                                resumenDev.transferencia +=
+                                    monto;
+                            } else if (
+                                metodo ===
+                                "mixto"
+                            ) {
+                                resumenDev.mixto +=
+                                    monto;
+                            } else {
+                                resumenDev.otros +=
+                                    monto;
+                            }
+                        }
+                    );
                 }
 
                 /*
@@ -1076,59 +1079,6 @@ export default function CerrarCajaPage() {
 
         try {
             setCerrandoCaja(true);
-
-            console.log(
-                "========== CERRANDO CAJA =========="
-            );
-
-            console.log(
-                "Sesión:",
-                sesion.id
-            );
-
-            console.log(
-                "Fondo inicial:",
-                sesion.monto_inicial
-            );
-
-            console.log(
-                "Ventas efectivo:",
-                ventasEfectivoOriginal
-            );
-
-            console.log(
-                "Entradas:",
-                resumenMovimientos.entradas
-            );
-
-            console.log(
-                "Retiros:",
-                resumenMovimientos.salidas
-            );
-
-            console.log(
-                "Devoluciones efectivo:",
-                devolucionesEfectivo
-            );
-
-            console.log(
-                "Efectivo esperado:",
-                efectivoEsperado
-            );
-
-            console.log(
-                "Monto real:",
-                montoContado
-            );
-
-            console.log(
-                "Diferencia:",
-                diferencia
-            );
-
-            console.log(
-                "==================================="
-            );
 
             const {
                 data,

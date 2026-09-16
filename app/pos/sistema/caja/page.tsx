@@ -3229,7 +3229,7 @@ id,
                                                 | "retiros"
                                             )
                                         }
-                                        className={`whitespace - nowrap rounded - full px - 4 py - 2 text - xs font - bold transition ${filtro ===
+                                        className={`whitespace - nowrap rounded-full px - 4 py - 2 text - xs font - bold transition ${filtro ===
                                             opcion.id
                                             ? "bg-[var(--color-primary)] text-white"
                                             : "bg-[var(--color-background)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]"
@@ -3364,7 +3364,7 @@ id,
                                                             {esVenta &&
                                                                 movimiento.metodo_pago && (
                                                                     <span
-                                                                        className={`rounded - full px - 2 py - 0.5 text - [10px] font - bold ${metodoVenta ===
+                                                                        className={`rounded-full px - 2 py - 0.5 text - [10px] font - bold ${metodoVenta ===
                                                                             "efectivo"
                                                                             ? "bg-green-50 text-green-700"
                                                                             : metodoVenta ===
@@ -3406,7 +3406,7 @@ id,
                                                             {(esVenta ||
                                                                 esDevolucion) && (
                                                                     <span
-                                                                        className={`rounded - full px - 2 py - 0.5 text - [10px] font - semibold ${afectaEfectivo
+                                                                        className={` px - 2 py - 0.5 text - [10px] font - semibold ${afectaEfectivo
                                                                             ? "bg-green-50 text-green-700"
                                                                             : "bg-gray-100 text-gray-600"
                                                                             } `}

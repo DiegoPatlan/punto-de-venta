@@ -8,8 +8,6 @@ export default function PruebaUsuarioPage() {
             data: { session },
         } = await supabase.auth.getSession();
 
-        console.log("SESSION:", session);
-
         if (!session?.access_token) {
             console.error("No hay sesión activa.");
             return;
@@ -27,9 +25,6 @@ export default function PruebaUsuarioPage() {
                     Authorization: `Bearer ${session.access_token}`,
                 },
             });
-
-        console.log("RESPUESTA:", data);
-        console.log("ERROR:", error);
 
         if (error) {
             alert(

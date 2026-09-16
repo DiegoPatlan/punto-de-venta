@@ -13,17 +13,12 @@ export default function LogoutPOSButton() {
         setCargando(true);
 
         try {
-            console.log("🔴 CERRANDO SESIÓN POS...");
-
             await supabasePOS.auth.signOut();
 
             // Limpiar explícitamente la sesión del cajero
             if (typeof window !== "undefined") {
                 localStorage.removeItem("pos-cajero-auth");
             }
-
-            console.log("✅ SESIÓN POS CERRADA");
-
             // Regresar completamente al login
             window.location.replace("/pos/login");
         } catch (error) {

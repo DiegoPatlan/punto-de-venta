@@ -28,17 +28,7 @@ export interface UsuarioPOS {
  */
 
 export async function obtenerUsuarioPOS(): Promise<UsuarioPOS | null> {
-    console.log(
-        "=========================================="
-    );
 
-    console.log(
-        "👤 OBTENER USUARIO ACTUAL - POS"
-    );
-
-    console.log(
-        "=========================================="
-    );
 
     /*
      * ========================================
@@ -51,15 +41,7 @@ export async function obtenerUsuarioPOS(): Promise<UsuarioPOS | null> {
         error: authError,
     } = await supabasePOS.auth.getUser();
 
-    console.log(
-        "👤 Usuario Auth POS:",
-        user
-    );
 
-    console.log(
-        "❌ Error Auth POS:",
-        authError
-    );
 
     if (authError) {
         console.error(
@@ -77,11 +59,6 @@ export async function obtenerUsuarioPOS(): Promise<UsuarioPOS | null> {
 
         return null;
     }
-
-    console.log(
-        "✅ Usuario POS autenticado:",
-        user.id
-    );
 
     /*
      * ========================================
@@ -119,15 +96,6 @@ export async function obtenerUsuarioPOS(): Promise<UsuarioPOS | null> {
         )
         .maybeSingle();
 
-    console.log(
-        "👤 Usuario POS encontrado:",
-        data
-    );
-
-    console.log(
-        "❌ Error consultando usuario POS:",
-        error
-    );
 
     if (error) {
         console.error(
@@ -206,38 +174,6 @@ export async function obtenerUsuarioPOS(): Promise<UsuarioPOS | null> {
             data.foto_url ?? null,
         negocio,
     };
-
-    console.log(
-        "=========================================="
-    );
-
-    console.log(
-        "✅ USUARIO POS COMPLETO"
-    );
-
-    console.log(
-        "👤 Usuario:",
-        usuarioPOS.nombre
-    );
-
-    console.log(
-        "🔐 Rol:",
-        usuarioPOS.rol
-    );
-
-    console.log(
-        "🏪 Negocio:",
-        usuarioPOS.negocio?.nombre
-    );
-
-    console.log(
-        "🖼️ Logo:",
-        usuarioPOS.negocio?.logo_url
-    );
-
-    console.log(
-        "=========================================="
-    );
 
     return usuarioPOS;
 }

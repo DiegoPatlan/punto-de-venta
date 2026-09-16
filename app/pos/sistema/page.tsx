@@ -88,16 +88,6 @@ export default function PosPage() {
                     (await obtenerUsuarioPOS()) as
                     | UsuarioActual
                     | null;
-
-                console.log(
-                    "========== POS =========="
-                );
-
-                console.log(
-                    "Usuario:",
-                    usuarioActual
-                );
-
                 /*
                  * ========================================
                  * VALIDAR USUARIO
@@ -186,9 +176,7 @@ export default function PosPage() {
                  */
 
                 if (!sesionData) {
-                    console.log(
-                        "No hay sesión abierta. Redirigiendo a /pos/caj"
-                    );
+
 
                     router.replace("/pos/caj");
 
@@ -302,15 +290,6 @@ export default function PosPage() {
                     cajaActual
                 );
 
-                console.log(
-                    "Caja actual:",
-                    cajaActual
-                );
-
-                console.log(
-                    "Sesión actual:",
-                    sesionActual
-                );
             } catch (error) {
                 console.error(
                     "Error inesperado cargando POS:",

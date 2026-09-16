@@ -791,7 +791,7 @@ id,
                                                             className={`
 inline - flex
 items - center
-rounded - full
+
 border
 px - 3
 py - 1

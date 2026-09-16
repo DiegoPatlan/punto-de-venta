@@ -94,25 +94,11 @@ export default function POSLayout({
             try {
                 setCargando(true);
 
-                console.log(
-                    "=========================================="
-                );
-                console.log(
-                    "👤 LAYOUT POS/SISTEMA - OBTENER USUARIO"
-                );
-                console.log(
-                    "=========================================="
-                );
-
                 const usuarioActual =
                     await obtenerUsuarioPOS();
 
                 if (cancelado) return;
 
-                console.log(
-                    "👤 Usuario POS:",
-                    usuarioActual
-                );
 
                 /*
                  * ========================================================
@@ -140,21 +126,6 @@ export default function POSLayout({
                  */
 
                 setUsuario(usuarioActual);
-
-                console.log(
-                    "✅ Usuario POS autenticado:",
-                    usuarioActual.nombre
-                );
-
-                console.log(
-                    "🏪 Negocio:",
-                    usuarioActual.negocio?.nombre
-                );
-
-                console.log(
-                    "🖼️ Logo:",
-                    usuarioActual.negocio?.logo_url
-                );
 
                 /*
                  * ========================================================
@@ -214,16 +185,9 @@ export default function POSLayout({
                     tieneCajaAbierta
                 );
 
-                console.log(
-                    "💰 Caja abierta:",
-                    tieneCajaAbierta
-                );
 
                 if (sesionCaja) {
-                    console.log(
-                        "💰 Sesión de caja:",
-                        sesionCaja
-                    );
+
                 }
 
                 /*
@@ -233,13 +197,7 @@ export default function POSLayout({
                  */
 
                 if (!tieneCajaAbierta) {
-                    console.log(
-                        "➡️ Usuario sin caja abierta."
-                    );
 
-                    console.log(
-                        "➡️ Redirigiendo a /pos/caj"
-                    );
 
                     setCargando(false);
 
@@ -253,9 +211,6 @@ export default function POSLayout({
                  * ========================================================
                  */
 
-                console.log(
-                    "✅ Usuario autorizado para entrar al sistema."
-                );
 
                 setCargando(false);
             } catch (error) {

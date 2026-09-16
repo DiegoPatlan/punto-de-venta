@@ -15,9 +15,6 @@ export interface UsuarioActual {
  * ==========================================
  */
 export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
-    console.log("==========================================");
-    console.log("👤 OBTENER USUARIO ACTUAL - ADMIN");
-    console.log("==========================================");
 
     /*
      * ========================================
@@ -30,15 +27,6 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
         error: authError,
     } = await supabaseAdmin.auth.getUser();
 
-    console.log(
-        "👤 Usuario Auth ADMIN:",
-        user
-    );
-
-    console.log(
-        "❌ Error Auth ADMIN:",
-        authError
-    );
 
     if (authError) {
         console.error(
@@ -57,10 +45,6 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
         return null;
     }
 
-    console.log(
-        "✅ Usuario ADMIN autenticado:",
-        user.id
-    );
 
     /*
      * ========================================
@@ -97,15 +81,7 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
         )
         .maybeSingle();
 
-    console.log(
-        "👤 Usuario ADMIN encontrado:",
-        data
-    );
 
-    console.log(
-        "❌ Error consultando usuario ADMIN:",
-        error
-    );
 
     if (error) {
         console.error(
@@ -131,15 +107,6 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
 
         return null;
     }
-
-    console.log(
-        "✅ USUARIO ADMIN COMPLETO ENCONTRADO:",
-        data
-    );
-
-    console.log(
-        "=========================================="
-    );
 
     return {
         id: data.id,

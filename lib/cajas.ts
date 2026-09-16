@@ -39,11 +39,6 @@ export async function obtenerCajasAsignadas(
     negocioId: string,
     usuarioId: string
 ) {
-    console.log("==========================================");
-    console.log("📦 OBTENER CAJAS ASIGNADAS");
-    console.log("==========================================");
-    console.log("🏢 Negocio:", negocioId);
-    console.log("👤 Usuario:", usuarioId);
 
     /*
      * ============================================
@@ -76,9 +71,6 @@ export async function obtenerCajasAsignadas(
          * ============================================
          */
 
-        console.log(
-            "➡️ 1. Validando usuario..."
-        );
 
         const {
             data: usuarioData,
@@ -93,15 +85,6 @@ export async function obtenerCajasAsignadas(
             .eq("activo", true)
             .maybeSingle();
 
-        console.log(
-            "👤 Usuario encontrado:",
-            usuarioData
-        );
-
-        console.log(
-            "❌ Error usuario:",
-            usuarioError
-        );
 
         if (usuarioError) {
             console.error(
@@ -139,9 +122,6 @@ export async function obtenerCajasAsignadas(
          * están asignadas al usuario.
          */
 
-        console.log(
-            "➡️ 2. Consultando usuario_cajas..."
-        );
 
         const {
             data: asignaciones,
@@ -156,15 +136,6 @@ export async function obtenerCajasAsignadas(
                 usuarioId
             );
 
-        console.log(
-            "📦 Asignaciones encontradas:",
-            asignaciones
-        );
-
-        console.log(
-            "❌ Error usuario_cajas:",
-            asignacionesError
-        );
 
         if (asignacionesError) {
             console.error(
@@ -191,9 +162,6 @@ export async function obtenerCajasAsignadas(
             !asignaciones ||
             asignaciones.length === 0
         ) {
-            console.log(
-                "ℹ️ El usuario no tiene cajas asignadas."
-            );
 
             return {
                 data: [],
@@ -214,10 +182,7 @@ export async function obtenerCajasAsignadas(
             )
             .filter(Boolean);
 
-        console.log(
-            "🆔 IDs de cajas asignadas:",
-            idsCajas
-        );
+
 
         if (idsCajas.length === 0) {
             return {
@@ -232,9 +197,7 @@ export async function obtenerCajasAsignadas(
          * ============================================
          */
 
-        console.log(
-            "➡️ 3. Consultando cajas..."
-        );
+
 
         const {
             data: cajasData,
@@ -253,15 +216,7 @@ export async function obtenerCajasAsignadas(
                 true
             );
 
-        console.log(
-            "🏧 Cajas encontradas:",
-            cajasData
-        );
 
-        console.log(
-            "❌ Error cajas:",
-            cajasError
-        );
 
         if (cajasError) {
             console.error(
@@ -282,9 +237,6 @@ export async function obtenerCajasAsignadas(
             !cajasData ||
             cajasData.length === 0
         ) {
-            console.log(
-                "ℹ️ No se encontraron cajas activas."
-            );
 
             return {
                 data: [],
@@ -309,10 +261,6 @@ export async function obtenerCajasAsignadas(
             ),
         ];
 
-        console.log(
-            "🏪 IDs de sucursales:",
-            idsSucursales
-        );
 
         if (
             idsSucursales.length === 0
@@ -322,10 +270,6 @@ export async function obtenerCajasAsignadas(
                 error: null,
             };
         }
-
-        console.log(
-            "➡️ 4. Consultando sucursales..."
-        );
 
         const {
             data: sucursalesData,
@@ -348,15 +292,6 @@ export async function obtenerCajasAsignadas(
                 true
             );
 
-        console.log(
-            "🏪 Sucursales encontradas:",
-            sucursalesData
-        );
-
-        console.log(
-            "❌ Error sucursales:",
-            sucursalesError
-        );
 
         if (sucursalesError) {
             console.error(
@@ -440,23 +375,7 @@ export async function obtenerCajasAsignadas(
          * ============================================
          */
 
-        console.log(
-            "=========================================="
-        );
 
-        console.log(
-            "✅ CAJAS FINALES:",
-            cajas
-        );
-
-        console.log(
-            "📦 Total cajas:",
-            cajas.length
-        );
-
-        console.log(
-            "=========================================="
-        );
 
         return {
             data: cajas,

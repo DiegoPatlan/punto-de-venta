@@ -83,7 +83,7 @@ export default function ImpresorasPage() {
         cargarImpresoras(),
       ]);
 
-      if (configOk || impresorasOk) {
+      if (configOk && impresorasOk) {
         setServicioConectado(true);
       }
     } finally {

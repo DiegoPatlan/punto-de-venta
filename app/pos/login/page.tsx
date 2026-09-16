@@ -29,10 +29,6 @@ export default function PosLoginPage() {
         try {
             setCargando(true);
 
-            console.log("==========================================");
-            console.log("🔐 INICIANDO SESIÓN POS");
-            console.log("==========================================");
-
             /*
              * ========================================
              * LOGIN CON LA SESIÓN DEL POS
@@ -46,9 +42,6 @@ export default function PosLoginPage() {
                 email: email.trim(),
                 password,
             });
-
-            console.log("Usuario Auth POS:", data.user);
-            console.log("Error login:", loginError);
 
             if (loginError) {
                 console.error(
@@ -100,12 +93,6 @@ export default function PosLoginPage() {
                     true
                 )
                 .maybeSingle();
-
-            console.log("👤 Usuario POS:", usuario);
-            console.log(
-                "❌ Error usuario POS:",
-                usuarioError
-            );
 
             if (usuarioError) {
                 console.error(
@@ -174,33 +161,6 @@ export default function PosLoginPage() {
 
                 return;
             }
-
-            console.log(
-                "=========================================="
-            );
-
-            console.log(
-                "✅ LOGIN POS CORRECTO"
-            );
-
-            console.log(
-                "Usuario:",
-                usuario.nombre
-            );
-
-            console.log(
-                "Rol:",
-                usuario.rol
-            );
-
-            console.log(
-                "Negocio:",
-                usuario.negocio_id
-            );
-
-            console.log(
-                "=========================================="
-            );
 
             /*
              * ========================================

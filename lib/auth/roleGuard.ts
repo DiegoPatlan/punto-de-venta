@@ -20,23 +20,16 @@ export interface UsuarioActual {
 }
 
 export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
-    console.log("==========================================");
-    console.log("👤 OBTENER USUARIO ACTUAL - ADMIN");
-    console.log("==========================================");
 
     const {
         data: { user },
         error: authError,
     } = await supabase.auth.getUser();
 
-    console.log("👤 Usuario Auth ADMIN:", user);
-    console.log("❌ Error Auth ADMIN:", authError);
 
     if (authError || !user) {
         return null;
     }
-
-    console.log("✅ Usuario ADMIN autenticado:", user.id);
 
     const { data: usuario, error } = await supabase
         .from("usuarios")
@@ -57,11 +50,6 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
         .eq("auth_user_id", user.id)
         .eq("activo", true)
         .maybeSingle();
-
-    console.log("🔥 RESULTADO USUARIO:", usuario);
-    console.log("🔥 NEGOCIO DESDE USUARIO:", usuario?.negocios);
-    console.log("🔥 NEGOCIO ID:", usuario?.negocio_id);
-    console.log("🔥 ERROR:", error);
 
     if (error) {
         console.error(
@@ -91,14 +79,6 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
         activo: usuario.activo,
         negocios: negocio,
     };
-
-    console.log("==========================================");
-    console.log("🔥 USUARIO ADMIN FINAL");
-    console.log("👤 Nombre:", usuarioActual.nombre);
-    console.log("🔐 Rol:", usuarioActual.rol);
-    console.log("🏢 Negocio ID:", usuarioActual.negocio_id);
-    console.log("🏪 Negocio:", usuarioActual.negocios);
-    console.log("==========================================");
 
     return usuarioActual;
 }

@@ -177,7 +177,6 @@ export default function ProductosPage() {
     }
 
     async function abrirEditarProducto(producto: any) {
-        console.log("Producto a editar:", producto);
 
         await cargarCategorias();
 

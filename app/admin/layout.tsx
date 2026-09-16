@@ -292,9 +292,6 @@ export default function AdminLayout({
                 const datos = await obtenerUsuarioActual();
 
                 if (!datos) {
-                    console.log(
-                        "🔒 No hay sesión administrativa. Redirigiendo al login..."
-                    );
 
                     setUsuario(null);
 
@@ -312,9 +309,6 @@ export default function AdminLayout({
                  * del panel administrativo.
                  */
                 if (datos.rol !== "admin") {
-                    console.log(
-                        `🚫 Rol ${datos.rol} sin acceso al panel administrativo.`
-                    );
 
                     setUsuario(null);
 

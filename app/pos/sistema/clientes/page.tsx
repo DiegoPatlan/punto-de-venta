@@ -818,10 +818,6 @@ id,
                 return;
             }
 
-            console.log(
-                "Resultado registrar_abono_cliente:",
-                data
-            );
 
             const resultado =
                 data as {
@@ -1134,7 +1130,7 @@ id,
                             )
                         }
                         placeholder="Buscar por nombre, teléfono, correo o RFC..."
-                        className={`${inputClass} focus: border - [var(--color - primary)]focus: ring - [var(--color - primary)]/20`}
+                        className={`${inputClass} focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]/20`}
                         style={inputStyle}
                     />
                 </div >

@@ -125,50 +125,6 @@ export default function BuscadorProductos({
 
     /*
      * ==========================================
-     * DEBUG INICIAL
-     * ==========================================
-     */
-
-    useEffect(() => {
-
-        console.log(
-
-            "=========================================="
-
-        );
-
-        console.log(
-
-            "🔎 BUSCADOR DE PRODUCTOS INICIADO"
-
-        );
-
-        console.log(
-
-            "🏢 NEGOCIO ID:",
-
-            negocioId
-
-        );
-
-        console.log(
-
-            "🏪 SUCURSAL ID:",
-
-            sucursalId
-
-        );
-
-        console.log(
-
-            "=========================================="
-
-        );
-
-    }, [negocioId, sucursalId]);
-
-    /*
-     * ==========================================
      * CARGAR CATEGORÍAS
      * ==========================================
      */
@@ -205,63 +161,17 @@ export default function BuscadorProductos({
                  * ======================================
                  */
 
-                const {
-
-                    data: usuarioAuth,
-
-                    error: errorAuth,
-
-                } = await supabasePOS.auth.getUser();
-
-                console.log(
-
-                    "🔐 AUTH UID DESDE BUSCADOR POS:",
-
-                    usuarioAuth?.user?.id
-
-                );
-
-                console.log(
-
-                    "🔐 ERROR AUTH POS:",
-
-                    errorAuth
-
-                );
-
+                const { data: usuarioAuth } =
+                    await supabasePOS.auth.getUser();
                 /*
                  * ======================================
                  * VERIFICAR NEGOCIO SEGÚN RPC
                  * ======================================
                  */
 
-                const {
+                const { data: negocioFuncion } =
+                    await supabasePOS.rpc("get_mi_negocio_id");
 
-                    data: negocioFuncion,
-
-                    error: errorFuncion,
-
-                } = await supabasePOS.rpc(
-
-                    "get_mi_negocio_id"
-
-                );
-
-                console.log(
-
-                    "🏢 NEGOCIO SEGÚN get_mi_negocio_id():",
-
-                    negocioFuncion
-
-                );
-
-                console.log(
-
-                    "❌ ERROR get_mi_negocio_id():",
-
-                    errorFuncion
-
-                );
 
                 /*
                  * ======================================
@@ -269,13 +179,6 @@ export default function BuscadorProductos({
                  * ======================================
                  */
 
-                console.log(
-
-                    "📂 CARGANDO CATEGORÍAS DEL NEGOCIO:",
-
-                    negocioId
-
-                );
 
                 const {
 
@@ -345,13 +248,6 @@ export default function BuscadorProductos({
 
                 }
 
-                console.log(
-
-                    "✅ CATEGORÍAS ENCONTRADAS:",
-
-                    data
-
-                );
 
                 if (!cancelado) {
 
@@ -472,50 +368,6 @@ export default function BuscadorProductos({
             setError("");
 
             try {
-
-                console.log(
-
-                    "=========================================="
-
-                );
-
-                console.log(
-
-                    "🔎 CONSULTANDO PRODUCTOS"
-
-                );
-
-                console.log(
-
-                    "🏢 Negocio:",
-
-                    negocioId
-
-                );
-
-                console.log(
-
-                    "🏪 Sucursal:",
-
-                    sucursalId
-
-                );
-
-                console.log(
-
-                    "🔍 Búsqueda:",
-
-                    termino
-
-                );
-
-                console.log(
-
-                    "📂 Categoría:",
-
-                    categoriaSeleccionada
-
-                );
 
                 /*
                  * ======================================
@@ -697,23 +549,6 @@ export default function BuscadorProductos({
                     return;
 
                 }
-
-                console.log(
-
-                    "📦 PRODUCTOS RECIBIDOS:",
-
-                    data
-
-                );
-
-                console.log(
-
-                    "📦 TOTAL PRODUCTOS:",
-
-                    data?.length ?? 0
-
-                );
-
                 /*
                  * ======================================
                  * FORMATEAR PRODUCTOS
@@ -940,14 +775,6 @@ export default function BuscadorProductos({
                         );
 
                     if (categoriaCoincide) {
-
-                        console.log(
-
-                            "📂 CATEGORÍA COINCIDENTE:",
-
-                            categoriaCoincide
-
-                        );
 
                         /*
                          * ==================================
@@ -1320,28 +1147,6 @@ export default function BuscadorProductos({
                             }
 
                         )
-
-                );
-
-                /*
-                 * ======================================
-                 * DEBUG FINAL
-                 * ======================================
-                 */
-
-                console.log(
-
-                    "✅ PRODUCTOS FINALES:",
-
-                    productosFinales
-
-                );
-
-                console.log(
-
-                    "✅ TOTAL FINAL:",
-
-                    productosFinales.length
 
                 );
 
