@@ -1,35 +1,172 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import crypto from "crypto";
 
-export async function POST(request: NextRequest) {
+import { createClient } from "@supabase/supabase-js";
+
+import {
+    obtenerCredencialesMercadoPago,
+    obtenerTerminalMercadoPago,
+} from "../../../../lib/mercadopago/credenciales";
+
+function obtenerSupabaseAdmin() {
+    const supabaseUrl =
+        process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    const serviceRoleKey =
+        process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+        throw new Error(
+            "Faltan las variables de entorno de Supabase."
+        );
+    }
+
+    return createClient(
+        supabaseUrl,
+        serviceRoleKey,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+            },
+        }
+    );
+}
+
+function obtenerTokenAutorizacion(
+    request: NextRequest
+) {
+    const authorization =
+        request.headers.get("authorization");
+
+    if (
+        !authorization ||
+        !authorization.startsWith("Bearer ")
+    ) {
+        return null;
+    }
+
+    return authorization.substring(7).trim();
+}
+
+export async function POST(
+    request: NextRequest
+) {
     try {
         // =========================================================
-        // 1. OBTENER ACCESS TOKEN
+        // 1. AUTENTICAR USUARIO DEL POS
         // =========================================================
 
-        const accessToken =
-            process.env.MERCADOPAGO_ACCESS_TOKEN;
+        const accessTokenUsuario =
+            obtenerTokenAutorizacion(request);
 
-        if (!accessToken) {
+        if (!accessTokenUsuario) {
             return NextResponse.json(
                 {
                     ok: false,
                     error:
-                        "MERCADOPAGO_ACCESS_TOKEN no está configurado en las variables de entorno.",
+                        "No autorizado. Se requiere una sesión activa.",
+                },
+                { status: 401 }
+            );
+        }
+
+        const supabaseAdmin =
+            obtenerSupabaseAdmin();
+
+        const {
+            data: authData,
+            error: authError,
+        } =
+            await supabaseAdmin.auth.getUser(
+                accessTokenUsuario
+            );
+
+        if (
+            authError ||
+            !authData?.user
+        ) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "La sesión del usuario no es válida.",
+                },
+                { status: 401 }
+            );
+        }
+
+        // =========================================================
+        // 2. OBTENER USUARIO Y NEGOCIO
+        // =========================================================
+
+        const { data: usuario, error: usuarioError } =
+            await supabaseAdmin
+                .from("usuarios")
+                .select(
+                    "id, negocio_id, rol, activo"
+                )
+                .eq(
+                    "auth_user_id",
+                    authData.user.id
+                )
+                .maybeSingle();
+
+        if (usuarioError) {
+            console.error(
+                "Error obteniendo usuario:",
+                usuarioError
+            );
+
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "No se pudo identificar al usuario.",
                 },
                 { status: 500 }
             );
         }
 
+        if (!usuario || !usuario.activo) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "El usuario no está autorizado para utilizar el Punto de Venta.",
+                },
+                { status: 403 }
+            );
+        }
+
+        const negocioId =
+            usuario.negocio_id;
+
+        if (!negocioId) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "El usuario no tiene un negocio asociado.",
+                },
+                { status: 403 }
+            );
+        }
+
         // =========================================================
-        // 2. RECIBIR DATOS DEL POS
+        // 3. RECIBIR DATOS DEL POS
         // =========================================================
 
         const body = await request.json();
 
-        const monto = Number(body?.monto);
+        const monto =
+            Number(body?.monto);
 
-        if (!Number.isFinite(monto) || monto <= 0) {
+        if (
+            !Number.isFinite(monto) ||
+            monto <= 0
+        ) {
             return NextResponse.json(
                 {
                     ok: false,
@@ -41,27 +178,49 @@ export async function POST(request: NextRequest) {
         }
 
         // =========================================================
-        // 3. TERMINAL DE PRUEBA
+        // 4. OBTENER CREDENCIALES DEL NEGOCIO
         // =========================================================
-        //
-        // Esta es la terminal virtual de sandbox que ya utilizamos
-        // correctamente en las pruebas anteriores.
-        //
-        // IMPORTANTE:
-        // Para producción posteriormente utilizaremos el terminal_id
-        // real de la terminal compatible con integración PDV.
-        //
+
+        const credenciales =
+            await obtenerCredencialesMercadoPago(
+                negocioId
+            );
+
+        // =========================================================
+        // 5. OBTENER TERMINAL DEL NEGOCIO
+        // =========================================================
+
+        const terminal =
+            await obtenerTerminalMercadoPago(
+                negocioId
+            );
 
         const terminalId =
-            process.env.MERCADOPAGO_TERMINAL_ID ||
-            "NEWLAND_N950__SBX0000001";
+            terminal.terminalId;
 
         // =========================================================
-        // 4. REFERENCIA EXTERNA
+        // 6. VERIFICAR EXPIRACIÓN DEL ACCESS TOKEN
         // =========================================================
-        //
-        // Debe ser única para cada Order.
-        //
+
+        if (
+            credenciales.expiresAt &&
+            new Date(
+                credenciales.expiresAt
+            ).getTime() <= Date.now()
+        ) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "La autorización de Mercado Pago expiró. Es necesario renovar la conexión.",
+                },
+                { status: 401 }
+            );
+        }
+
+        // =========================================================
+        // 7. REFERENCIA EXTERNA
+        // =========================================================
 
         const externalReference =
             `pos-${Date.now()}-${crypto
@@ -69,38 +228,41 @@ export async function POST(request: NextRequest) {
                 .toString("hex")}`;
 
         // =========================================================
-        // 5. IDEMPOTENCY KEY
+        // 8. IDEMPOTENCY KEY
         // =========================================================
-        //
-        // Evita crear dos Orders iguales accidentalmente si la
-        // petición se repite.
-        //
 
-        const idempotencyKey = crypto.randomUUID();
+        const idempotencyKey =
+            crypto.randomUUID();
 
         // =========================================================
-        // 6. BODY PARA MERCADO PAGO
+        // 9. BODY PARA MERCADO PAGO
         // =========================================================
 
         const orderBody = {
             type: "point",
 
-            external_reference: externalReference,
+            external_reference:
+                externalReference,
 
-            expiration_time: "PT15M",
+            expiration_time:
+                "PT15M",
 
             transactions: {
                 payments: [
                     {
-                        amount: monto.toFixed(2),
+                        amount:
+                            monto.toFixed(2),
                     },
                 ],
             },
 
             config: {
                 point: {
-                    terminal_id: terminalId,
-                    print_on_terminal: "no_ticket",
+                    terminal_id:
+                        terminalId,
+
+                    print_on_terminal:
+                        "no_ticket",
                 },
             },
 
@@ -111,27 +273,42 @@ export async function POST(request: NextRequest) {
         console.log(
             "========================================"
         );
+
         console.log(
             "MERCADO PAGO - CREANDO ORDER"
         );
+
         console.log(
             "========================================"
         );
+
+        console.log(
+            "Negocio:",
+            negocioId
+        );
+
+        console.log(
+            "Usuario:",
+            usuario.id
+        );
+
         console.log(
             "Monto:",
             monto.toFixed(2)
         );
+
         console.log(
             "Terminal:",
             terminalId
         );
+
         console.log(
             "External Reference:",
             externalReference
         );
 
         // =========================================================
-        // 7. CREAR ORDER
+        // 10. CREAR ORDER EN MERCADO PAGO
         // =========================================================
 
         const response = await fetch(
@@ -144,39 +321,45 @@ export async function POST(request: NextRequest) {
                         "application/json",
 
                     Authorization:
-                        `Bearer ${accessToken}`,
+                        `Bearer ${credenciales.accessToken}`,
 
                     "X-Idempotency-Key":
                         idempotencyKey,
                 },
 
-                body: JSON.stringify(orderBody),
+                body:
+                    JSON.stringify(
+                        orderBody
+                    ),
 
                 cache: "no-store",
             }
         );
 
-        // =========================================================
-        // 8. LEER RESPUESTA
-        // =========================================================
-
-        const data = await response.json();
+        const data =
+            await response.json();
 
         // =========================================================
-        // 9. ERROR DE MERCADO PAGO
+        // 11. ERROR DE MERCADO PAGO
         // =========================================================
 
         if (!response.ok) {
             console.error(
                 "Mercado Pago error creando Order:",
-                data
+                {
+                    status:
+                        response.status,
+
+                    data,
+                }
             );
 
             return NextResponse.json(
                 {
                     ok: false,
 
-                    status: response.status,
+                    status:
+                        response.status,
 
                     error:
                         data,
@@ -195,7 +378,89 @@ export async function POST(request: NextRequest) {
         }
 
         // =========================================================
-        // 10. RESPUESTA EXITOSA
+        // 12. VALIDAR ORDER ID
+        // =========================================================
+
+        if (!data?.id) {
+            console.error(
+                "Mercado Pago no devolvió un Order ID:",
+                data
+            );
+
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "Mercado Pago no devolvió un identificador de Order válido.",
+                },
+                { status: 502 }
+            );
+        }
+
+        // =========================================================
+        // 13. GUARDAR RELACIÓN ORDER ↔ NEGOCIO
+        // =========================================================
+
+        const { error: errorRegistro } =
+            await supabaseAdmin
+                .from("mercado_pago_orders")
+                .insert({
+                    negocio_id:
+                        negocioId,
+
+                    order_id:
+                        String(data.id),
+
+                    external_reference:
+                        data.external_reference ??
+                        externalReference,
+
+                    monto:
+                        monto,
+
+                    estado:
+                        data.status ??
+                        null,
+
+                    estado_detalle:
+                        data.status_detail ??
+                        null,
+                });
+
+        if (errorRegistro) {
+            console.error(
+                "Error guardando relación de Mercado Pago:",
+                errorRegistro
+            );
+
+            /*
+             * La Order ya existe en Mercado Pago.
+             * No intentamos crear otra Order.
+             *
+             * Devolvemos error para que el problema
+             * quede registrado y pueda corregirse.
+             */
+
+            return NextResponse.json(
+                {
+                    ok: false,
+
+                    error:
+                        "La Order fue creada en Mercado Pago, pero no se pudo registrar su relación con el negocio.",
+
+                    order_id:
+                        data.id,
+
+                    external_reference:
+                        data.external_reference ??
+                        externalReference,
+                },
+                { status: 500 }
+            );
+        }
+
+        // =========================================================
+        // 14. RESPUESTA EXITOSA
         // =========================================================
 
         console.log(
@@ -250,25 +515,24 @@ export async function POST(request: NextRequest) {
             }
         );
     } catch (error) {
-        // =========================================================
-        // ERROR GENERAL
-        // =========================================================
-
         console.error(
             "Error creando Order de Mercado Pago:",
-            error
+            error instanceof Error
+                ? error.message
+                : error
         );
+
+        const mensaje =
+            error instanceof Error
+                ? error.message
+                : "Error interno al comunicarse con Mercado Pago.";
 
         return NextResponse.json(
             {
                 ok: false,
-
-                error:
-                    "Error interno al comunicarse con Mercado Pago.",
+                error: mensaje,
             },
-            {
-                status: 500,
-            }
+            { status: 500 }
         );
     }
 }
