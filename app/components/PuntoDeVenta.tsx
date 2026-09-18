@@ -37,13 +37,8 @@ interface ProductoEscaneado {
     nombre: string;
     codigo_barras: string | null;
     sku: string | null;
-
-    // Precio que paga el cliente.
     precio_venta: number | string;
-
-    // Precio antes de IVA.
     precio_base: number | string | null;
-
     unidad: string;
     imagen_url: string | null;
     activo: boolean;
@@ -58,6 +53,15 @@ interface Cliente {
     limite_credito: number;
     saldo_credito: number;
     activo: boolean;
+}
+
+interface DatosRecargoTarjeta {
+    activo: boolean;
+    porcentaje: number;
+    montoBase: number;
+    montoRecargo: number;
+    montoTarjetaFinal: number;
+    clienteAcepto: boolean;
 }
 
 export default function PuntoDeVenta({
@@ -86,6 +90,18 @@ export default function PuntoDeVenta({
 
     const [ivaPorcentaje, setIvaPorcentaje] =
         useState(16);
+
+    /*
+    ==========================================
+    CONFIGURACIÓN RECARGO TARJETA
+    ==========================================
+    */
+
+    const [recargoTarjetaActivo, setRecargoTarjetaActivo] =
+        useState(false);
+
+    const [recargoTarjetaPorcentaje, setRecargoTarjetaPorcentaje] =
+        useState(3.5);
 
     const [carrito, setCarrito] =
         useState<ItemCarrito[]>([]);
@@ -138,6 +154,18 @@ export default function PuntoDeVenta({
         useRef(0);
 
     const procesandoEscaner =
+        useRef(false);
+
+    /*
+    ==========================================
+    MERCADO PAGO
+    ==========================================
+    */
+
+    const [procesandoMercadoPago, setProcesandoMercadoPago] =
+        useState(false);
+
+    const mercadoPagoCancelado =
         useRef(false);
 
     /*
@@ -208,21 +236,21 @@ export default function PuntoDeVenta({
                 } = await supabasePOS
                     .from("clientes")
                     .select(`
-                        id,
-                        nombre,
-                        telefono,
-                        email,
-                        limite_credito,
-                        saldo_credito,
-                        activo
-                    `)
+    id,
+        nombre,
+        telefono,
+        email,
+        limite_credito,
+        saldo_credito,
+        activo
+            `)
                     .eq(
                         "negocio_id",
                         negocioId
                     )
                     .eq("activo", true)
                     .or(
-                        `nombre.ilike.%${texto}%,telefono.ilike.%${texto}%,email.ilike.%${texto}%`
+                        `nombre.ilike.% ${texto}%, telefono.ilike.% ${texto}%, email.ilike.% ${texto}% `
                     )
                     .order("nombre")
                     .limit(10);
@@ -279,7 +307,7 @@ export default function PuntoDeVenta({
 
     /*
     ==========================================
-    CARGAR NEGOCIO + IVA
+    CARGAR NEGOCIO + IVA + RECARGO
     ==========================================
     */
 
@@ -293,10 +321,12 @@ export default function PuntoDeVenta({
             } = await supabasePOS
                 .from("negocios")
                 .select(`
-                    nombre,
-                    impuestos_activos,
-                    iva_porcentaje
-                `)
+    nombre,
+        impuestos_activos,
+        iva_porcentaje,
+        recargo_tarjeta_activo,
+        recargo_tarjeta_porcentaje
+            `)
                 .eq("id", negocioId)
                 .maybeSingle();
 
@@ -314,13 +344,11 @@ export default function PuntoDeVenta({
                     "Punto de Venta"
                 );
 
-                /*
-                Si no podemos leer la
-                configuración fiscal,
-                no mostramos IVA.
-                */
                 setImpuestosActivos(false);
                 setIvaPorcentaje(16);
+
+                setRecargoTarjetaActivo(false);
+                setRecargoTarjetaPorcentaje(3.5);
 
                 return;
             }
@@ -345,6 +373,24 @@ export default function PuntoDeVenta({
                 Number.isFinite(iva)
                     ? iva
                     : 16
+            );
+
+            setRecargoTarjetaActivo(
+                Boolean(
+                    data?.recargo_tarjeta_activo
+                )
+            );
+
+            const recargo =
+                Number(
+                    data?.recargo_tarjeta_porcentaje
+                );
+
+            setRecargoTarjetaPorcentaje(
+                Number.isFinite(recargo) &&
+                    recargo >= 0
+                    ? recargo
+                    : 3.5
             );
         }
 
@@ -464,29 +510,23 @@ export default function PuntoDeVenta({
                 | ProductoEscaneado
                 | null = null;
 
-            /*
-            ==========================================
-            BUSCAR POR CÓDIGO DE BARRAS
-            ==========================================
-            */
-
             const {
                 data: productoCodigo,
                 error: errorCodigo,
             } = await supabasePOS
                 .from("productos")
                 .select(`
-                    id,
-                    nombre,
-                    codigo_barras,
-                    sku,
-                    precio_base,
-                    precio_venta,
-                    unidad,
-                    imagen_url,
-                    activo,
-                    categoria_id
-                `)
+    id,
+        nombre,
+        codigo_barras,
+        sku,
+        precio_base,
+        precio_venta,
+        unidad,
+        imagen_url,
+        activo,
+        categoria_id
+            `)
                 .eq(
                     "negocio_id",
                     negocioId
@@ -506,12 +546,6 @@ export default function PuntoDeVenta({
                     productoCodigo as ProductoEscaneado;
             }
 
-            /*
-            ==========================================
-            BUSCAR POR SKU
-            ==========================================
-            */
-
             if (!productoEncontrado) {
                 const {
                     data: productoSku,
@@ -519,17 +553,17 @@ export default function PuntoDeVenta({
                 } = await supabasePOS
                     .from("productos")
                     .select(`
-                        id,
-                        nombre,
-                        codigo_barras,
-                        sku,
-                        precio_base,
-                        precio_venta,
-                        unidad,
-                        imagen_url,
-                        activo,
-                        categoria_id
-                    `)
+    id,
+        nombre,
+        codigo_barras,
+        sku,
+        precio_base,
+        precio_venta,
+        unidad,
+        imagen_url,
+        activo,
+        categoria_id
+            `)
                     .eq(
                         "negocio_id",
                         negocioId
@@ -550,12 +584,6 @@ export default function PuntoDeVenta({
                 }
             }
 
-            /*
-            ==========================================
-            PRODUCTO NO ENCONTRADO
-            ==========================================
-            */
-
             if (!productoEncontrado) {
                 setMensajeEscaner(
                     `No se encontró ningún producto con el código ${codigoLimpio}.`
@@ -564,21 +592,15 @@ export default function PuntoDeVenta({
                 return;
             }
 
-            /*
-            ==========================================
-            INVENTARIO
-            ==========================================
-            */
-
             const {
                 data: inventario,
                 error: errorInventario,
             } = await supabasePOS
                 .from("inventario")
                 .select(`
-                    stock,
-                    sucursal_id
-                `)
+    stock,
+        sucursal_id
+            `)
                 .eq(
                     "producto_id",
                     productoEncontrado.id
@@ -615,14 +637,7 @@ export default function PuntoDeVenta({
                 return;
             }
 
-            /*
-            ==========================================
-            CONVERTIR PRODUCTO
-            ==========================================
-            */
-
-            const producto: ProductoVenta =
-            {
+            const producto: ProductoVenta = {
                 id:
                     productoEncontrado.id,
 
@@ -932,7 +947,8 @@ export default function PuntoDeVenta({
         cliente?: Cliente | null,
         tipoTicket:
             | "cliente"
-            | "tienda" = "cliente"
+            | "tienda" = "cliente",
+        datosRecargo?: DatosRecargoTarjeta
     ) {
         const ANCHO = 42;
 
@@ -941,7 +957,8 @@ export default function PuntoDeVenta({
         ) =>
             `$${Number(
                 valor
-            ).toFixed(2)} `;
+            ).toFixed(2)
+            } `;
 
         const redondear =
             (valor: number) =>
@@ -977,12 +994,6 @@ export default function PuntoDeVenta({
 
         let ticket = "";
 
-        /*
-        ==========================================
-        CALCULAR SUBTOTAL BASE
-        ==========================================
-        */
-
         let subtotalBase = 0;
 
         for (
@@ -1011,24 +1022,6 @@ export default function PuntoDeVenta({
                 subtotalBase
             );
 
-        /*
-        ==========================================
-        CALCULAR IVA REAL DEL TOTAL COBRADO
-        ==========================================
-    
-        registrar_venta utiliza precio_venta,
-        que ya contiene IVA cuando los
-        impuestos están activos.
-
-        Por eso NO hacemos:
-
-        precio_venta * 16%
-
-        En su lugar:
-
-        IVA = total real - subtotal base
-        */
-
         const totalFinal =
             redondear(
                 Number(
@@ -1054,26 +1047,29 @@ export default function PuntoDeVenta({
             }
         }
 
-        /*
-        ==========================================
-        INICIALIZAR IMPRESORA
-        ==========================================
-        */
+        const recargoTicket =
+            datosRecargo?.activo
+                ? redondear(
+                    datosRecargo.montoRecargo
+                )
+                : 0;
+
+        const totalConRecargo =
+            recargoTicket > 0
+                ? redondear(
+                    totalFinal +
+                    recargoTicket
+                )
+                : totalFinal;
 
         ticket +=
             "\x1B\x40";
-
-        /*
-        ==========================================
-        ENCABEZADO
-        ==========================================
-        */
 
         ticket +=
             "\x1B\x61\x01";
 
         ticket +=
-            `${nombreNegocio}\n`;
+            `${nombreNegocio} \n`;
 
         ticket +=
             "PUNTO DE VENTA\n";
@@ -1099,17 +1095,11 @@ export default function PuntoDeVenta({
         ticket +=
             linea + "\n";
 
-        /*
-        ==========================================
-        INFORMACIÓN DE VENTA
-        ==========================================
-        */
+        ticket +=
+            `Sucursal: ${sucursalNombre} \n`;
 
         ticket +=
-            `Sucursal: ${sucursalNombre}\n`;
-
-        ticket +=
-            `Caja: ${cajaNombre}\n`;
+            `Caja: ${cajaNombre} \n`;
 
         const fecha =
             new Date();
@@ -1117,24 +1107,20 @@ export default function PuntoDeVenta({
         ticket +=
             `Fecha: ${fecha.toLocaleDateString(
                 "es-MX"
-            )}\n`;
+            )
+            } \n`;
 
         ticket +=
             `Hora: ${fecha.toLocaleTimeString(
                 "es-MX"
-            )}\n`;
+            )
+            } \n`;
 
         ticket +=
-            `Venta: #${datosVenta.folio}\n`;
+            `Venta: #${datosVenta.folio} \n`;
 
         ticket +=
             linea + "\n";
-
-        /*
-        ==========================================
-        PRODUCTOS
-        ==========================================
-        */
 
         for (
             const item of carritoVenta
@@ -1162,14 +1148,16 @@ export default function PuntoDeVenta({
                 `${nombre.slice(
                     0,
                     ANCHO
-                )}\n`;
+                )
+                } \n`;
 
             const detalle =
                 `  ${cantidad} x ${dinero(
                     precio
-                )}`;
+                )
+                } `;
 
-            const totalTexto =
+            const totalTextoProducto =
                 dinero(
                     subtotal
                 );
@@ -1179,7 +1167,7 @@ export default function PuntoDeVenta({
                     1,
                     ANCHO -
                     detalle.length -
-                    totalTexto.length
+                    totalTextoProducto.length
                 );
 
             ticket +=
@@ -1187,15 +1175,9 @@ export default function PuntoDeVenta({
                 " ".repeat(
                     espacios
                 ) +
-                totalTexto +
+                totalTextoProducto +
                 "\n";
         }
-
-        /*
-        ==========================================
-        DESGLOSE FISCAL
-        ==========================================
-        */
 
         ticket +=
             linea + "\n";
@@ -1203,7 +1185,8 @@ export default function PuntoDeVenta({
         const subtotalTexto =
             `Subtotal: ${dinero(
                 subtotalBase
-            )}`;
+            )
+            } `;
 
         ticket +=
             subtotalTexto + "\n";
@@ -1212,26 +1195,38 @@ export default function PuntoDeVenta({
             impuestosActivos
         ) {
             const ivaTexto =
-                `IVA (${Number(
+                `IVA(${Number(
                     ivaPorcentaje
-                ).toFixed(2)}%): ${dinero(
+                ).toFixed(2)
+                } %): ${dinero(
                     ivaTicket
-                )}`;
+                )
+                } `;
 
             ticket +=
                 ivaTexto + "\n";
         }
 
-        /*
-        ==========================================
-        TOTAL
-        ==========================================
-        */
+        if (
+            recargoTicket > 0
+        ) {
+            const porcentajeTexto =
+                Number(
+                    datosRecargo?.porcentaje ?? 0
+                ).toFixed(2);
+
+            ticket +=
+                `Recargo tarjeta(${porcentajeTexto} %): ${dinero(
+                    recargoTicket
+                )
+                } \n`;
+        }
 
         const totalTexto =
             `TOTAL: ${dinero(
-                totalFinal
-            )}`;
+                totalConRecargo
+            )
+            } `;
 
         ticket +=
             "\x1B\x45\x01";
@@ -1253,12 +1248,6 @@ export default function PuntoDeVenta({
         ticket +=
             linea + "\n";
 
-        /*
-        ==========================================
-        MÉTODO DE PAGO
-        ==========================================
-        */
-
         switch (
         metodoPago
         ) {
@@ -1269,23 +1258,64 @@ export default function PuntoDeVenta({
                 ticket +=
                     `Recibido: ${dinero(
                         montoPagado
-                    )}\n`;
+                    )
+                    } \n`;
 
                 ticket +=
                     `Cambio: ${dinero(
                         datosVenta.cambio
-                    )}\n`;
+                    )
+                    } \n`;
 
                 break;
 
             case "tarjeta":
                 ticket +=
                     "Metodo de pago: TARJETA\n";
+
+                ticket +=
+                    "Mercado Pago\n";
+
+                if (
+                    recargoTicket > 0
+                ) {
+                    ticket +=
+                        `Monto venta: ${dinero(
+                            totalFinal
+                        )
+                        } \n`;
+
+                    ticket +=
+                        `Recargo: ${dinero(
+                            recargoTicket
+                        )
+                        } \n`;
+
+                    ticket +=
+                        `Total cobrado: ${dinero(
+                            totalConRecargo
+                        )
+                        } \n`;
+
+                    if (
+                        datosRecargo?.clienteAcepto
+                    ) {
+                        ticket +=
+                            `Cliente aceptó el recargo del ${Number(
+                                datosRecargo.porcentaje
+                            ).toFixed(
+                                2
+                            )
+                            }% por pago con tarjeta.\n`;
+                    }
+                }
+
                 break;
 
             case "transferencia":
                 ticket +=
                     "Metodo de pago: TRANSFERENCIA\n";
+
                 break;
 
             case "mixto":
@@ -1296,13 +1326,41 @@ export default function PuntoDeVenta({
                     `Efectivo: ${dinero(
                         pagoMixto?.efectivo ??
                         0
-                    )}\n`;
+                    )
+                    } \n`;
 
                 ticket +=
                     `Tarjeta: ${dinero(
+                        datosRecargo?.montoTarjetaFinal ??
                         pagoMixto?.tarjeta ??
                         0
-                    )}\n`;
+                    )
+                    } \n`;
+
+                if (
+                    recargoTicket > 0
+                ) {
+                    ticket +=
+                        `Recargo tarjeta: ${dinero(
+                            recargoTicket
+                        )
+                        } \n`;
+
+                    if (
+                        datosRecargo?.clienteAcepto
+                    ) {
+                        ticket +=
+                            `Cliente aceptó el recargo del ${Number(
+                                datosRecargo.porcentaje
+                            ).toFixed(
+                                2
+                            )
+                            }% por pago con tarjeta.\n`;
+                    }
+                }
+
+                ticket +=
+                    "Tarjeta procesada por Mercado Pago\n";
 
                 break;
 
@@ -1315,7 +1373,8 @@ export default function PuntoDeVenta({
                         `Cliente: ${cliente.nombre.slice(
                             0,
                             30
-                        )}\n`;
+                        )
+                        } \n`;
                 }
 
                 break;
@@ -1323,12 +1382,6 @@ export default function PuntoDeVenta({
 
         ticket +=
             linea + "\n";
-
-        /*
-        ==========================================
-        PIE
-        ==========================================
-        */
 
         ticket +=
             "\x1B\x61\x01";
@@ -1347,12 +1400,6 @@ export default function PuntoDeVenta({
 
         ticket +=
             "\x1B\x61\x00";
-
-        /*
-        ==========================================
-        IDENTIFICACIÓN DE COPIA
-        ==========================================
-        */
 
         ticket +=
             "\n";
@@ -1375,12 +1422,6 @@ export default function PuntoDeVenta({
         ticket +=
             "\x1B\x61\x00";
 
-        /*
-        ==========================================
-        SOPORTE TI
-        ==========================================
-        */
-
         if (
             tipoTicket ===
             "cliente"
@@ -1397,17 +1438,6 @@ export default function PuntoDeVenta({
             ticket +=
                 "\x1B\x61\x00";
         }
-
-        /*
-        ==========================================
-        FINAL DEL TICKET
-        ==========================================
-
-        No agregamos "CORTE".
-
-        PrinterService realiza el corte
-        de cada ticket individualmente.
-        */
 
         ticket +=
             "\n";
@@ -1470,7 +1500,7 @@ export default function PuntoDeVenta({
 
     /*
     ==========================================
-    CONFIRMAR COBRO
+    REGISTRAR VENTA
     ==========================================
     */
 
@@ -1485,8 +1515,9 @@ export default function PuntoDeVenta({
         pagoMixto?: {
             efectivo: number;
             tarjeta: number;
-        }
-    ) {
+        },
+        datosRecargo?: DatosRecargoTarjeta
+    ): Promise<boolean> {
         try {
             /*
             ==========================================
@@ -1512,7 +1543,7 @@ export default function PuntoDeVenta({
                     "La sesión de usuario no está disponible. Cierra sesión e inicia sesión nuevamente."
                 );
 
-                return;
+                return false;
             }
 
             /*
@@ -1550,7 +1581,7 @@ export default function PuntoDeVenta({
                     "No se pudo validar el usuario del sistema."
                 );
 
-                return;
+                return false;
             }
 
             if (!usuario) {
@@ -1560,7 +1591,7 @@ export default function PuntoDeVenta({
                     "El usuario de Punto de Venta no existe."
                 );
 
-                return;
+                return false;
             }
 
             if (
@@ -1572,7 +1603,7 @@ export default function PuntoDeVenta({
                     "El usuario está inactivo y no puede registrar ventas."
                 );
 
-                return;
+                return false;
             }
 
             if (
@@ -1585,7 +1616,7 @@ export default function PuntoDeVenta({
                     "La sesión de Supabase no corresponde al usuario de Punto de Venta."
                 );
 
-                return;
+                return false;
             }
 
             /*
@@ -1609,6 +1640,14 @@ export default function PuntoDeVenta({
             /*
             ==========================================
             REGISTRAR VENTA
+            ==========================================
+            IMPORTANTE:
+            El RPC recibe el importe normal
+            de la venta.
+            El recargo de tarjeta se cobra
+            adicionalmente en Mercado Pago
+            y se muestra en el ticket.
+            No modificamos precios ni IVA.
             ==========================================
             */
 
@@ -1669,7 +1708,7 @@ export default function PuntoDeVenta({
                     "No se pudo registrar la venta."
                 );
 
-                return;
+                return false;
             }
 
             /*
@@ -1678,8 +1717,7 @@ export default function PuntoDeVenta({
             ==========================================
             */
 
-            const ventaRegistrada =
-            {
+            const ventaRegistrada = {
                 ventaId:
                     String(
                         data.venta_id
@@ -1701,39 +1739,34 @@ export default function PuntoDeVenta({
                     ),
             };
 
-            /*
-            ==========================================
-            GUARDAR COPIA DEL CARRITO
-            ==========================================
-            */
-
             const carritoParaTicket =
                 [...carrito];
-
-            /*
-            ==========================================
-            GUARDAR CLIENTE
-            ==========================================
-            */
 
             const clienteParaTicket =
                 clienteSeleccionado;
 
-            /*
-            ==========================================
-            CERRAR COBRO
-            ==========================================
-            */
+            const datosRecargoParaTicket =
+                datosRecargo
+                    ? {
+                        ...datosRecargo,
+                        montoBase:
+                            Number(
+                                datosRecargo.montoBase
+                            ),
+                        montoRecargo:
+                            Number(
+                                datosRecargo.montoRecargo
+                            ),
+                        montoTarjetaFinal:
+                            Number(
+                                datosRecargo.montoTarjetaFinal
+                            ),
+                    }
+                    : undefined;
 
             setModalCobroAbierto(
                 false
             );
-
-            /*
-            ==========================================
-            MOSTRAR VENTA
-            ==========================================
-            */
 
             setMensajeVenta({
                 folio:
@@ -1747,12 +1780,6 @@ export default function PuntoDeVenta({
 
                 impresion: true,
             });
-
-            /*
-            ==========================================
-            LIMPIAR CARRITO
-            ==========================================
-            */
 
             setCarrito([]);
 
@@ -1771,12 +1798,6 @@ export default function PuntoDeVenta({
 
             void (async () => {
                 try {
-                    /*
-                    ==========================================
-                    COPIA CLIENTE
-                    ==========================================
-                    */
-
                     const ticketCliente =
                         generarTicket(
                             carritoParaTicket,
@@ -1785,18 +1806,13 @@ export default function PuntoDeVenta({
                             montoPagado,
                             pagoMixto,
                             clienteParaTicket,
-                            "cliente"
+                            "cliente",
+                            datosRecargoParaTicket
                         );
 
                     await imprimirTicket(
                         ticketCliente
                     );
-
-                    /*
-                    ==========================================
-                    PAUSA
-                    ==========================================
-                    */
 
                     await new Promise(
                         (resolve) =>
@@ -1806,12 +1822,6 @@ export default function PuntoDeVenta({
                             )
                     );
 
-                    /*
-                    ==========================================
-                    COPIA TIENDA
-                    ==========================================
-                    */
-
                     const ticketTienda =
                         generarTicket(
                             carritoParaTicket,
@@ -1820,7 +1830,8 @@ export default function PuntoDeVenta({
                             montoPagado,
                             pagoMixto,
                             clienteParaTicket,
-                            "tienda"
+                            "tienda",
+                            datosRecargoParaTicket
                         );
 
                     await imprimirTicket(
@@ -1855,6 +1866,8 @@ export default function PuntoDeVenta({
                     );
                 }
             })();
+
+            return true;
         } catch (error) {
             console.error(
                 "❌ ERROR INESPERADO:",
@@ -1865,6 +1878,408 @@ export default function PuntoDeVenta({
                 "error",
                 "Error inesperado",
                 "Ocurrió un error inesperado al registrar la venta."
+            );
+
+            return false;
+        }
+    }
+
+    /*
+    ==========================================
+    MERCADO PAGO - CREAR ORDER
+    ==========================================
+    */
+
+    async function crearOrderMercadoPago(
+        montoTarjeta: number
+    ): Promise<{
+        ok: boolean;
+        orderId?: string;
+        error?: string;
+    }> {
+        try {
+            const monto =
+                Number(
+                    montoTarjeta
+                );
+
+            if (
+                !Number.isFinite(monto) ||
+                monto <= 0
+            ) {
+                return {
+                    ok: false,
+                    error:
+                        "El monto de tarjeta no es válido.",
+                };
+            }
+
+            const respuesta =
+                await fetch(
+                    "/api/mercadopago/create-order",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+                        body:
+                            JSON.stringify({
+                                monto,
+                            }),
+                        cache: "no-store",
+                    }
+                );
+
+            const data =
+                await respuesta.json();
+
+            if (
+                !respuesta.ok ||
+                !data?.ok ||
+                !data?.order_id
+            ) {
+                console.error(
+                    "❌ ERROR CREANDO ORDER MERCADO PAGO:",
+                    data
+                );
+
+                let mensajeError =
+                    "No se pudo crear la orden de Mercado Pago.";
+
+                if (
+                    typeof data?.error ===
+                    "string"
+                ) {
+                    mensajeError =
+                        data.error;
+                } else if (
+                    data?.error &&
+                    typeof data.error.message ===
+                    "string"
+                ) {
+                    mensajeError =
+                        data.error.message;
+                } else if (
+                    data?.error?.errors &&
+                    Array.isArray(
+                        data.error.errors
+                    ) &&
+                    data.error.errors.length >
+                    0
+                ) {
+                    const primerError =
+                        data.error.errors[0];
+
+                    if (
+                        typeof primerError ===
+                        "string"
+                    ) {
+                        mensajeError =
+                            primerError;
+                    } else if (
+                        primerError &&
+                        typeof primerError.message ===
+                        "string"
+                    ) {
+                        mensajeError =
+                            primerError.message;
+                    } else if (
+                        primerError &&
+                        typeof primerError.code ===
+                        "string"
+                    ) {
+                        mensajeError =
+                            primerError.code;
+                    }
+                } else if (
+                    typeof data?.message ===
+                    "string"
+                ) {
+                    mensajeError =
+                        data.message;
+                }
+
+                return {
+                    ok: false,
+                    error:
+                        mensajeError,
+                };
+            }
+
+            return {
+                ok: true,
+                orderId:
+                    String(
+                        data.order_id
+                    ),
+            };
+        } catch (error) {
+            console.error(
+                "❌ ERROR COMUNICANDO CON MERCADO PAGO:",
+                error
+            );
+
+            return {
+                ok: false,
+                error:
+                    "No se pudo comunicar con Mercado Pago.",
+            };
+        }
+    }
+
+    /*
+    ==========================================
+    MERCADO PAGO - CONSULTAR ORDER
+    ==========================================
+    */
+
+    const consultarOrderMercadoPago =
+        async (
+            orderId: string
+        ): Promise<{
+            ok: boolean;
+            estado?: string;
+            pagoConfirmado?: boolean;
+            error?: string;
+        }> => {
+            try {
+                const response =
+                    await fetch(
+                        `/api/mercadopago/order/${encodeURIComponent(orderId)}`,
+                        {
+                            method: "GET",
+                            cache: "no-store",
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (
+                    !response.ok ||
+                    !data?.ok
+                ) {
+                    console.error(
+                        "❌ ERROR CONSULTANDO MERCADO PAGO:",
+                        data
+                    );
+
+                    return {
+                        ok: false,
+                        error:
+                            typeof data?.error ===
+                                "string"
+                                ? data.error
+                                : "No se pudo consultar la Order de Mercado Pago.",
+                    };
+                }
+
+                return {
+                    ok: true,
+                    estado:
+                        data.estado_pos,
+                    pagoConfirmado:
+                        data.pago_confirmado ===
+                        true,
+                };
+            } catch (error) {
+                console.error(
+                    "❌ ERROR CONSULTANDO MERCADO PAGO:",
+                    error
+                );
+
+                return {
+                    ok: false,
+                    error:
+                        error instanceof Error
+                            ? error.message
+                            : "Error consultando la Order de Mercado Pago.",
+                };
+            }
+        };
+
+    /*
+    ==========================================
+    MERCADO PAGO - COBRO
+    ==========================================
+    */
+
+    async function cobrarConMercadoPago(
+        montoTarjeta: number
+    ): Promise<boolean> {
+        if (
+            procesandoMercadoPago
+        ) {
+            return false;
+        }
+
+        if (
+            carrito.length ===
+            0
+        ) {
+            mostrarMensaje(
+                "error",
+                "Carrito vacío",
+                "No hay productos para cobrar."
+            );
+
+            return false;
+        }
+
+        const monto =
+            Number(
+                montoTarjeta
+            );
+
+        if (
+            !Number.isFinite(monto) ||
+            monto <= 0
+        ) {
+            mostrarMensaje(
+                "error",
+                "Monto inválido",
+                "El importe de tarjeta debe ser mayor que cero."
+            );
+
+            return false;
+        }
+
+        mercadoPagoCancelado.current =
+            false;
+
+        setProcesandoMercadoPago(
+            true
+        );
+
+        try {
+            /*
+            ==========================================
+            CREAR ORDER
+            ==========================================
+            */
+
+            const order =
+                await crearOrderMercadoPago(
+                    monto
+                );
+
+            if (
+                !order.ok ||
+                !order.orderId
+            ) {
+                mostrarMensaje(
+                    "error",
+                    "Mercado Pago",
+                    order.error ||
+                    "No se pudo crear la orden de pago."
+                );
+
+                return false;
+            }
+
+            const orderId =
+                order.orderId;
+
+            /*
+            ==========================================
+            ESPERAR CONFIRMACIÓN
+            ==========================================
+            */
+
+            const INTERVALO =
+                2000;
+
+            const TIEMPO_MAXIMO =
+                5 * 60 * 1000;
+
+            const inicio =
+                Date.now();
+
+            while (
+                Date.now() -
+                inicio <
+                TIEMPO_MAXIMO
+            ) {
+                if (
+                    mercadoPagoCancelado.current
+                ) {
+                    return false;
+                }
+
+                const estado =
+                    await consultarOrderMercadoPago(
+                        orderId
+                    );
+
+                if (
+                    estado.pagoConfirmado
+                ) {
+                    return true;
+                }
+
+                if (
+                    estado.estado ===
+                    "rechazado" ||
+                    estado.estado ===
+                    "cancelado" ||
+                    estado.estado ===
+                    "expirado"
+                ) {
+                    mostrarMensaje(
+                        "error",
+                        "Pago no aprobado",
+                        "Mercado Pago no aprobó el pago. La venta no fue registrada."
+                    );
+
+                    return false;
+                }
+
+                if (
+                    !estado.ok
+                ) {
+                    mostrarMensaje(
+                        "error",
+                        "Error de Mercado Pago",
+                        estado.error ||
+                        "No se pudo consultar correctamente el estado del pago."
+                    );
+
+                    return false;
+                }
+
+                await new Promise(
+                    (resolve) =>
+                        setTimeout(
+                            resolve,
+                            INTERVALO
+                        )
+                );
+            }
+
+            mostrarMensaje(
+                "info",
+                "Tiempo de espera agotado",
+                "No recibimos la confirmación del pago dentro del tiempo esperado. La venta no fue registrada. Verifica el estado del cobro antes de intentar nuevamente."
+            );
+
+            return false;
+        } catch (error) {
+            console.error(
+                "❌ ERROR EN COBRO MERCADO PAGO:",
+                error
+            );
+
+            mostrarMensaje(
+                "error",
+                "Error en Mercado Pago",
+                "Ocurrió un error durante el proceso de pago. La venta no fue registrada."
+            );
+
+            return false;
+        } finally {
+            setProcesandoMercadoPago(
+                false
             );
         }
     }
@@ -2165,14 +2580,14 @@ export default function PuntoDeVenta({
             {(mensajeEscaner ||
                 escaneando) && (
                     <div
-                        className={`rounded-2xl border p-4 ${escaneando
+                        className={`rounded - 2xl border p - 4 ${escaneando
                             ? "border-blue-200 bg-blue-50"
                             : mensajeEscaner.startsWith(
                                 "✓"
                             )
                                 ? "border-green-200 bg-green-50"
                                 : "border-red-200 bg-red-50"
-                            }`}
+                            } `}
                     >
 
                         <div className="flex items-center gap-3">
@@ -2188,14 +2603,14 @@ export default function PuntoDeVenta({
                             </span>
 
                             <p
-                                className={`text-sm font-medium ${escaneando
+                                className={`text - sm font - medium ${escaneando
                                     ? "text-blue-700"
                                     : mensajeEscaner.startsWith(
                                         "✓"
                                     )
                                         ? "text-green-700"
                                         : "text-red-700"
-                                    }`}
+                                    } `}
                             >
                                 {escaneando
                                     ? "Procesando código..."
@@ -2374,13 +2789,11 @@ export default function PuntoDeVenta({
 
                         </div>
 
-                        {/* ESTADO IMPRESIÓN */}
-
                         <div
-                            className={`mt-4 rounded-xl border p-4 ${mensajeVenta.impresion
+                            className={`mt - 4 rounded - xl border p - 4 ${mensajeVenta.impresion
                                 ? "border-green-200 bg-green-50"
                                 : "border-amber-200 bg-amber-50"
-                                }`}
+                                } `}
                         >
 
                             <div className="flex items-start gap-3">
@@ -2394,10 +2807,10 @@ export default function PuntoDeVenta({
                                 <div>
 
                                     <p
-                                        className={`text-sm font-semibold ${mensajeVenta.impresion
+                                        className={`text - sm font - semibold ${mensajeVenta.impresion
                                             ? "text-green-800"
                                             : "text-amber-800"
-                                            }`}
+                                            } `}
                                     >
                                         {mensajeVenta.impresion
                                             ? "Tickets enviados a impresora local"
@@ -2405,13 +2818,13 @@ export default function PuntoDeVenta({
                                     </p>
 
                                     <p
-                                        className={`mt-1 text-xs ${mensajeVenta.impresion
+                                        className={`mt - 1 text - xs ${mensajeVenta.impresion
                                             ? "text-green-700"
                                             : "text-amber-700"
-                                            }`}
+                                            } `}
                                     >
                                         {mensajeVenta.impresion
-                                            ? "La venta quedó registrada y las copias fueron enviadas al servicio local de impresión."
+                                            ? "La venta quedó registrada y las copias fueron enviadas al servicio local."
                                             : "La venta sí quedó registrada. Puedes revisar la impresora y continuar con la siguiente venta."}
                                     </p>
 
@@ -2448,13 +2861,38 @@ export default function PuntoDeVenta({
                 clienteSeleccionado={
                     clienteSeleccionado
                 }
-                onCerrar={() =>
+                recargoTarjetaActivo={
+                    recargoTarjetaActivo
+                }
+                recargoTarjetaPorcentaje={
+                    recargoTarjetaPorcentaje
+                }
+                onCerrar={() => {
+                    if (
+                        procesandoMercadoPago
+                    ) {
+                        return;
+                    }
+
                     setModalCobroAbierto(
                         false
-                    )
-                }
-                onConfirmar={
-                    confirmarCobro
+                    );
+                }}
+                onConfirmar={async (
+                    metodoPago,
+                    montoPagado,
+                    pagoMixto,
+                    datosRecargo
+                ) => {
+                    await confirmarCobro(
+                        metodoPago,
+                        montoPagado,
+                        pagoMixto,
+                        datosRecargo
+                    );
+                }}
+                onMercadoPago={
+                    cobrarConMercadoPago
                 }
             />
 
