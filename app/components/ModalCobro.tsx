@@ -46,6 +46,7 @@ interface ModalCobroProps {
     onMercadoPago?: (
         montoTarjeta: number
     ) => Promise<boolean>;
+    onCancelarMercadoPago?: () => void;
 }
 
 export default function ModalCobro({
@@ -57,6 +58,7 @@ export default function ModalCobro({
     onCerrar,
     onConfirmar,
     onMercadoPago,
+    onCancelarMercadoPago,
 }: ModalCobroProps) {
     const [metodoPago, setMetodoPago] = useState<
         | "efectivo"
@@ -270,6 +272,18 @@ export default function ModalCobro({
     }
 
     /*
+==========================================
+CANCELAR MERCADO PAGO
+==========================================
+*/
+
+    function cancelarMercadoPago() {
+        setProcesandoMercadoPago(false);
+        onCancelarMercadoPago?.();
+    }
+
+
+    /*
     ==========================================
     CONFIRMAR COBRO
     ==========================================
@@ -308,6 +322,7 @@ export default function ModalCobro({
                 */
 
                 if (!aprobado) {
+                    setProcesandoMercadoPago(false);
                     return;
                 }
 
@@ -379,6 +394,7 @@ export default function ModalCobro({
                     );
 
                 if (!aprobado) {
+                    setProcesandoMercadoPago(false);
                     return;
                 }
 
@@ -807,6 +823,14 @@ export default function ModalCobro({
                                         <span className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
                                         Esperando confirmación...
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={cancelarMercadoPago}
+                                        className="mt-4 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                                    >
+                                        Cancelar cobro
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -1118,6 +1142,15 @@ export default function ModalCobro({
                                         <span className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
                                         Esperando confirmación...
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={cancelarMercadoPago}
+                                        className="mt-4 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                                    >
+                                        Cancelar cobro
+                                    </button>
+
                                 </div>
                             )}
                         </div>

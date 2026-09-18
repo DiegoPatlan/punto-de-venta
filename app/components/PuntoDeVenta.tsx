@@ -165,8 +165,8 @@ export default function PuntoDeVenta({
     const [procesandoMercadoPago, setProcesandoMercadoPago] =
         useState(false);
 
-    const mercadoPagoCancelado =
-        useRef(false);
+    const mercadoPagoOperacionId =
+        useRef(0);
 
     /*
     ==========================================
@@ -2145,8 +2145,19 @@ export default function PuntoDeVenta({
             return false;
         }
 
-        mercadoPagoCancelado.current =
-            false;
+        /*
+        ==========================================
+        IDENTIFICAR OPERACIÓN
+        ==========================================
+        Cada cobro tiene un ID propio.
+        Si el usuario cancela, incrementamos este
+        ID y cualquier proceso anterior queda
+        invalidado automáticamente.
+        ==========================================
+        */
+
+        const operacionId =
+            ++mercadoPagoOperacionId.current;
 
         setProcesandoMercadoPago(
             true
@@ -2163,6 +2174,18 @@ export default function PuntoDeVenta({
                 await crearOrderMercadoPago(
                     monto
                 );
+
+            /*
+            Si el usuario canceló mientras se
+            creaba la Order, no continuamos.
+            */
+
+            if (
+                mercadoPagoOperacionId.current !==
+                operacionId
+            ) {
+                return false;
+            }
 
             if (
                 !order.ok ||
@@ -2201,8 +2224,15 @@ export default function PuntoDeVenta({
                 inicio <
                 TIEMPO_MAXIMO
             ) {
+                /*
+                ==========================================
+                VERIFICAR CANCELACIÓN
+                ==========================================
+                */
+
                 if (
-                    mercadoPagoCancelado.current
+                    mercadoPagoOperacionId.current !==
+                    operacionId
                 ) {
                     return false;
                 }
@@ -2211,6 +2241,18 @@ export default function PuntoDeVenta({
                     await consultarOrderMercadoPago(
                         orderId
                     );
+
+                /*
+                El usuario pudo cancelar mientras
+                la consulta estaba en curso.
+                */
+
+                if (
+                    mercadoPagoOperacionId.current !==
+                    operacionId
+                ) {
+                    return false;
+                }
 
                 if (
                     estado.pagoConfirmado
@@ -2248,6 +2290,12 @@ export default function PuntoDeVenta({
                     return false;
                 }
 
+                /*
+                ==========================================
+                ESPERAR SIGUIENTE CONSULTA
+                ==========================================
+                */
+
                 await new Promise(
                     (resolve) =>
                         setTimeout(
@@ -2255,6 +2303,36 @@ export default function PuntoDeVenta({
                             INTERVALO
                         )
                 );
+
+                /*
+                Verificar nuevamente después
+                del tiempo de espera.
+                */
+
+                if (
+                    mercadoPagoOperacionId.current !==
+                    operacionId
+                ) {
+                    return false;
+                }
+            }
+
+            /*
+            ==========================================
+            TIEMPO AGOTADO
+            ==========================================
+            */
+
+            /*
+            Si otra operación ya invalidó esta,
+            no mostramos ningún mensaje.
+            */
+
+            if (
+                mercadoPagoOperacionId.current !==
+                operacionId
+            ) {
+                return false;
             }
 
             mostrarMensaje(
@@ -2265,6 +2343,18 @@ export default function PuntoDeVenta({
 
             return false;
         } catch (error) {
+            /*
+            Si fue cancelado por el usuario,
+            no mostramos error.
+            */
+
+            if (
+                mercadoPagoOperacionId.current !==
+                operacionId
+            ) {
+                return false;
+            }
+
             console.error(
                 "❌ ERROR EN COBRO MERCADO PAGO:",
                 error
@@ -2278,10 +2368,41 @@ export default function PuntoDeVenta({
 
             return false;
         } finally {
-            setProcesandoMercadoPago(
-                false
-            );
+            /*
+            Solo la operación que sigue siendo
+            vigente puede modificar este estado.
+            */
+
+            if (
+                mercadoPagoOperacionId.current ===
+                operacionId
+            ) {
+                setProcesandoMercadoPago(
+                    false
+                );
+            }
         }
+    }
+
+    /*
+==========================================
+MERCADO PAGO - CANCELAR ESPERA
+==========================================
+IMPORTANTE:
+
+Esto cancela la espera/polling del POS.
+
+No intenta cancelar la Order remotamente
+en Mercado Pago.
+==========================================
+*/
+
+    function cancelarMercadoPago() {
+        mercadoPagoOperacionId.current += 1;
+
+        setProcesandoMercadoPago(
+            false
+        );
     }
 
     /*
@@ -2893,6 +3014,9 @@ export default function PuntoDeVenta({
                 }}
                 onMercadoPago={
                     cobrarConMercadoPago
+                }
+                onCancelarMercadoPago={
+                    cancelarMercadoPago
                 }
             />
 
