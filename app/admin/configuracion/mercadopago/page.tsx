@@ -39,6 +39,9 @@ export default function MercadoPagoConfiguracionPage() {
     const [porcentaje, setPorcentaje] = useState("3.50");
     const [montoEjemplo, setMontoEjemplo] = useState("100");
 
+    const [terminalId, setTerminalId] = useState("");
+    const [dispositivo, setDispositivo] = useState("");
+
     const [configuracionMP, setConfiguracionMP] =
         useState<ConfiguracionMercadoPago | null>(null);
 
@@ -197,8 +200,17 @@ export default function MercadoPagoConfiguracionPage() {
                 );
             }
 
-            setConfiguracionMP(
-                configuracion as ConfiguracionMercadoPago | null
+            const configuracionTipada =
+                configuracion as ConfiguracionMercadoPago | null;
+
+            setConfiguracionMP(configuracionTipada);
+
+            setTerminalId(
+                configuracionTipada?.terminal_id ?? ""
+            );
+
+            setDispositivo(
+                configuracionTipada?.dispositivo ?? ""
             );
         } catch (error) {
             console.error(
@@ -298,6 +310,7 @@ export default function MercadoPagoConfiguracionPage() {
              * La URL contiene un state generado en el servidor.
              * No almacenamos tokens en el navegador.
              */
+
             window.location.href = resultado.authorization_url;
         } catch (error) {
             console.error(
@@ -316,6 +329,12 @@ export default function MercadoPagoConfiguracionPage() {
             );
         }
     }
+
+    /*
+     * -------------------------------------------------------------
+     * GUARDAR CONFIGURACIÓN
+     * -------------------------------------------------------------
+     */
 
     async function guardarConfiguracion() {
         try {
@@ -347,6 +366,12 @@ export default function MercadoPagoConfiguracionPage() {
                 );
             }
 
+            /*
+             * ---------------------------------------------------------
+             * GUARDAR RECARGO
+             * ---------------------------------------------------------
+             */
+
             const { error: updateError } = await supabase
                 .from("negocios")
                 .update({
@@ -359,25 +384,139 @@ export default function MercadoPagoConfiguracionPage() {
 
             if (updateError) {
                 console.error(
-                    "Error guardando configuración de Mercado Pago:",
+                    "Error guardando configuración de recargo:",
                     updateError
                 );
 
                 throw new Error(
-                    "No se pudo guardar la configuración de Mercado Pago."
+                    "No se pudo guardar la configuración del recargo."
                 );
+            }
+
+            /*
+             * ---------------------------------------------------------
+             * GUARDAR CONFIGURACIÓN DE TERMINAL
+             * ---------------------------------------------------------
+             *
+             * El terminal_id puede permanecer vacío mientras el
+             * negocio todavía no tenga una Point Smart.
+             */
+
+            const terminalIdLimpio = terminalId.trim();
+
+            if (
+                terminalIdLimpio.length > 0 &&
+                !dispositivo
+            ) {
+                mostrarMensaje(
+                    "confirmacion",
+                    "Falta seleccionar el dispositivo",
+                    "Selecciona si la terminal corresponde a una Point Smart 1 o Point Smart 2."
+                );
+
+                return;
+            }
+
+            const { data: configuracionExistente, error: buscarError } =
+                await supabase
+                    .from("configuracion_mercado_pago")
+                    .select("id")
+                    .eq("negocio_id", usuario.negocio_id)
+                    .maybeSingle();
+
+            if (buscarError) {
+                console.error(
+                    "Error buscando configuración de Mercado Pago:",
+                    buscarError
+                );
+
+                throw new Error(
+                    "No se pudo verificar la configuración de la terminal."
+                );
+            }
+
+            const datosTerminal = {
+                terminal_id:
+                    terminalIdLimpio.length > 0
+                        ? terminalIdLimpio
+                        : null,
+                dispositivo:
+                    dispositivo.trim().length > 0
+                        ? dispositivo
+                        : null,
+            };
+
+            if (configuracionExistente?.id) {
+                const { error: terminalUpdateError } = await supabase
+                    .from("configuracion_mercado_pago")
+                    .update(datosTerminal)
+                    .eq("id", configuracionExistente.id);
+
+                if (terminalUpdateError) {
+                    console.error(
+                        "Error guardando terminal de Mercado Pago:",
+                        terminalUpdateError
+                    );
+
+                    throw new Error(
+                        "No se pudo guardar la configuración de la terminal."
+                    );
+                }
+            } else {
+                const { error: terminalInsertError } = await supabase
+                    .from("configuracion_mercado_pago")
+                    .insert({
+                        negocio_id: usuario.negocio_id,
+                        habilitado: true,
+                        modo: "produccion",
+                        estado_conexion: "desconectado",
+                        ...datosTerminal,
+                    });
+
+                if (terminalInsertError) {
+                    console.error(
+                        "Error creando configuración de terminal:",
+                        terminalInsertError
+                    );
+
+                    throw new Error(
+                        "No se pudo crear la configuración de la terminal."
+                    );
+                }
             }
 
             setPorcentaje(porcentajeNumero.toFixed(2));
 
+            setConfiguracionMP((actual) =>
+                actual
+                    ? {
+                        ...actual,
+                        terminal_id:
+                            terminalIdLimpio.length > 0
+                                ? terminalIdLimpio
+                                : null,
+                        dispositivo:
+                            dispositivo.trim().length > 0
+                                ? dispositivo
+                                : null,
+                    }
+                    : actual
+            );
+
             mostrarMensaje(
                 "exito",
                 "Configuración guardada",
-                recargoActivo
-                    ? `El recargo por pago con tarjeta quedó activado al ${porcentajeNumero.toFixed(
-                        2
-                    )}%.`
-                    : "El recargo por pago con tarjeta quedó desactivado."
+                terminalIdLimpio
+                    ? recargoActivo
+                        ? `La terminal de Mercado Pago y el recargo del ${porcentajeNumero.toFixed(
+                            2
+                        )}% quedaron guardados correctamente.`
+                        : "La terminal de Mercado Pago quedó guardada correctamente y el recargo por tarjeta está desactivado."
+                    : recargoActivo
+                        ? `El recargo por pago con tarjeta quedó activado al ${porcentajeNumero.toFixed(
+                            2
+                        )}%. La terminal permanece pendiente de configurar.`
+                        : "La configuración quedó guardada. La terminal de Mercado Pago permanece pendiente de configurar."
             );
         } catch (error) {
             console.error(
@@ -438,6 +577,7 @@ export default function MercadoPagoConfiguracionPage() {
     }
 
     const monto = Number(montoEjemplo) || 0;
+
     const porcentajeNumero = Number(porcentaje) || 0;
 
     const recargo = recargoActivo
@@ -459,7 +599,6 @@ export default function MercadoPagoConfiguracionPage() {
     return (
         <>
             <div className="space-y-6">
-
                 {/* ENCABEZADO */}
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -492,10 +631,8 @@ export default function MercadoPagoConfiguracionPage() {
                 ====================================================== */}
 
                 <Card className="p-5 sm:p-6">
-
                     <div className="mb-6">
                         <div className="flex items-start gap-3">
-
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-xl text-white">
                                 🔗
                             </div>
@@ -511,16 +648,13 @@ export default function MercadoPagoConfiguracionPage() {
                                     por este negocio.
                                 </p>
                             </div>
-
                         </div>
                     </div>
 
                     <div className="space-y-4">
-
                         {/* ESTADO */}
 
                         <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background-secondary)] p-4 sm:flex-row sm:items-center sm:justify-between">
-
                             <div>
                                 <p className="font-medium text-[var(--color-text)]">
                                     Estado de conexión
@@ -539,19 +673,15 @@ export default function MercadoPagoConfiguracionPage() {
 
                                 {obtenerTextoEstado()}
                             </span>
-
                         </div>
 
                         {/* INFORMACIÓN */}
 
                         <div className="grid gap-4 sm:grid-cols-2">
-
                             {/* CUENTA */}
 
                             <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
                                 <div className="mb-3 flex items-center gap-3">
-
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-background-secondary)] text-lg">
                                         👤
                                     </div>
@@ -565,7 +695,6 @@ export default function MercadoPagoConfiguracionPage() {
                                             Mercado Pago
                                         </p>
                                     </div>
-
                                 </div>
 
                                 <p className="text-sm text-[var(--color-text-secondary)]">
@@ -573,15 +702,12 @@ export default function MercadoPagoConfiguracionPage() {
                                         ? `ID de usuario: ${configuracionMP.usuario_mercado_pago_id}`
                                         : "Cuenta de Mercado Pago no conectada."}
                                 </p>
-
                             </div>
 
                             {/* DISPOSITIVO */}
 
                             <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
                                 <div className="mb-3 flex items-center gap-3">
-
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-background-secondary)] text-lg">
                                         📱
                                     </div>
@@ -592,26 +718,22 @@ export default function MercadoPagoConfiguracionPage() {
                                         </p>
 
                                         <p className="font-medium text-[var(--color-text)]">
-                                            {configuracionMP?.dispositivo ||
+                                            {dispositivo ||
                                                 "No configurado"}
                                         </p>
                                     </div>
-
                                 </div>
 
                                 <p className="text-sm text-[var(--color-text-secondary)]">
                                     Se configurará cuando se disponga de un
                                     Point compatible.
                                 </p>
-
                             </div>
 
                             {/* TERMINAL */}
 
                             <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
                                 <div className="mb-3 flex items-center gap-3">
-
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-background-secondary)] text-lg">
                                         🖥️
                                     </div>
@@ -622,26 +744,22 @@ export default function MercadoPagoConfiguracionPage() {
                                         </p>
 
                                         <p className="font-medium text-[var(--color-text)]">
-                                            {configuracionMP?.terminal_id ||
+                                            {terminalId ||
                                                 "No configurada"}
                                         </p>
                                     </div>
-
                                 </div>
 
                                 <p className="text-sm text-[var(--color-text-secondary)]">
-                                    La terminal se asociará al dispositivo
-                                    Point utilizado por el negocio.
+                                    El ID se agregará cuando el negocio tenga
+                                    una Point Smart compatible.
                                 </p>
-
                             </div>
 
                             {/* MODO */}
 
                             <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
                                 <div className="mb-3 flex items-center gap-3">
-
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-background-secondary)] text-lg">
                                         ⚙️
                                     </div>
@@ -658,7 +776,6 @@ export default function MercadoPagoConfiguracionPage() {
                                                 : "Producción"}
                                         </p>
                                     </div>
-
                                 </div>
 
                                 <p className="text-sm text-[var(--color-text-secondary)]">
@@ -666,17 +783,103 @@ export default function MercadoPagoConfiguracionPage() {
                                     producción cuando el negocio esté listo
                                     para operar.
                                 </p>
+                            </div>
+                        </div>
 
+                        {/* CONFIGURACIÓN DE TERMINAL */}
+
+                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-background-secondary)] p-4 sm:p-5">
+                            <div className="mb-5">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-background)] text-lg">
+                                        🖥️
+                                    </div>
+
+                                    <div>
+                                        <p className="font-semibold text-[var(--color-text)]">
+                                            Configuración de terminal
+                                        </p>
+
+                                        <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
+                                            Deja estos campos vacíos mientras
+                                            el negocio todavía no tenga una
+                                            Point Smart. Cuando llegue la
+                                            terminal, solamente tendrás que
+                                            seleccionar el modelo e introducir
+                                            su ID.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {/* DISPOSITIVO */}
+
+                                <div>
+                                    <label
+                                        htmlFor="dispositivo-mercado-pago"
+                                        className="mb-2 block text-sm font-medium text-[var(--color-text)]"
+                                    >
+                                        Dispositivo
+                                    </label>
+
+                                    <select
+                                        id="dispositivo-mercado-pago"
+                                        value={dispositivo}
+                                        onChange={(e) =>
+                                            setDispositivo(e.target.value)
+                                        }
+                                        disabled={guardando}
+                                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="">
+                                            Seleccionar cuando exista una terminal
+                                        </option>
+
+                                        <option value="Point Smart 1">
+                                            Point Smart 1
+                                        </option>
+
+                                        <option value="Point Smart 2">
+                                            Point Smart 2
+                                        </option>
+                                    </select>
+                                </div>
+
+                                {/* TERMINAL ID */}
+
+                                <div>
+                                    <label
+                                        htmlFor="terminal-id"
+                                        className="mb-2 block text-sm font-medium text-[var(--color-text)]"
+                                    >
+                                        ID de terminal
+                                    </label>
+
+                                    <input
+                                        id="terminal-id"
+                                        type="text"
+                                        value={terminalId}
+                                        onChange={(e) =>
+                                            setTerminalId(e.target.value)
+                                        }
+                                        placeholder="Se configurará cuando llegue la Point Smart"
+                                        disabled={guardando}
+                                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+
+                                    <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                                        No introduzcas aquí el terminal de
+                                        sandbox.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* BOTÓN DE CONEXIÓN */}
 
                         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-background-secondary)] p-4 sm:p-5">
-
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
                                 <div className="min-w-0">
                                     <p className="font-semibold text-[var(--color-text)]">
                                         Cuenta de Mercado Pago
@@ -703,20 +906,14 @@ export default function MercadoPagoConfiguracionPage() {
                                             ? "Reconectar Mercado Pago"
                                             : "Conectar Mercado Pago"}
                                 </button>
-
                             </div>
-
                         </div>
 
                         {/* AVISO */}
 
                         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-
                             <div className="flex gap-3">
-
-                                <div className="text-lg">
-                                    ℹ️
-                                </div>
+                                <div className="text-lg">ℹ️</div>
 
                                 <div>
                                     <p className="text-sm font-semibold text-blue-900">
@@ -730,11 +927,8 @@ export default function MercadoPagoConfiguracionPage() {
                                         almacena tu contraseña de Mercado Pago.
                                     </p>
                                 </div>
-
                             </div>
-
                         </div>
-
                     </div>
                 </Card>
 
@@ -743,10 +937,8 @@ export default function MercadoPagoConfiguracionPage() {
                 ====================================================== */}
 
                 <Card className="p-5 sm:p-6">
-
                     <div className="mb-6">
                         <div className="flex items-center gap-3">
-
                             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-xl text-white">
                                 💳
                             </div>
@@ -761,16 +953,13 @@ export default function MercadoPagoConfiguracionPage() {
                                     parte pagada con tarjeta.
                                 </p>
                             </div>
-
                         </div>
                     </div>
 
                     <div className="space-y-6">
-
                         {/* SWITCH */}
 
                         <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background-secondary)] p-4 sm:flex-row sm:items-center sm:justify-between">
-
                             <div>
                                 <p className="font-medium text-[var(--color-text)]">
                                     Activar recargo
@@ -805,13 +994,11 @@ export default function MercadoPagoConfiguracionPage() {
                                         }`}
                                 />
                             </button>
-
                         </div>
 
                         {/* PORCENTAJE */}
 
                         <div className="max-w-sm">
-
                             <label
                                 htmlFor="porcentaje-recargo"
                                 className="mb-2 block text-sm font-medium text-[var(--color-text)]"
@@ -820,7 +1007,6 @@ export default function MercadoPagoConfiguracionPage() {
                             </label>
 
                             <div className="relative">
-
                                 <input
                                     id="porcentaje-recargo"
                                     type="number"
@@ -831,31 +1017,27 @@ export default function MercadoPagoConfiguracionPage() {
                                     onChange={(e) =>
                                         setPorcentaje(e.target.value)
                                     }
-                                    disabled={!recargoActivo || guardando}
+                                    disabled={
+                                        !recargoActivo || guardando
+                                    }
                                     className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 pr-12 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
 
                                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-medium text-[var(--color-text-secondary)]">
                                     %
                                 </span>
-
                             </div>
 
                             <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
                                 Valor predeterminado: 3.50%
                             </p>
-
                         </div>
 
                         {/* AVISO */}
 
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-
                             <div className="flex gap-3">
-
-                                <div className="text-lg">
-                                    ⚠️
-                                </div>
+                                <div className="text-lg">⚠️</div>
 
                                 <div>
                                     <p className="text-sm font-semibold text-amber-900">
@@ -870,11 +1052,8 @@ export default function MercadoPagoConfiguracionPage() {
                                         aplicable a tu negocio.
                                     </p>
                                 </div>
-
                             </div>
-
                         </div>
-
                     </div>
                 </Card>
 
@@ -883,9 +1062,7 @@ export default function MercadoPagoConfiguracionPage() {
                 ====================================================== */}
 
                 <Card className="p-5 sm:p-6">
-
                     <div className="mb-5">
-
                         <h2 className="font-semibold text-[var(--color-text)]">
                             Vista previa
                         </h2>
@@ -894,15 +1071,12 @@ export default function MercadoPagoConfiguracionPage() {
                             Observa cómo se calcularía el recargo en una venta
                             con tarjeta.
                         </p>
-
                     </div>
 
                     <div className="grid gap-5 lg:grid-cols-2">
-
                         {/* MONTO */}
 
                         <div>
-
                             <label
                                 htmlFor="monto-ejemplo"
                                 className="mb-2 block text-sm font-medium text-[var(--color-text)]"
@@ -911,7 +1085,6 @@ export default function MercadoPagoConfiguracionPage() {
                             </label>
 
                             <div className="relative">
-
                                 <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]">
                                     $
                                 </span>
@@ -927,19 +1100,14 @@ export default function MercadoPagoConfiguracionPage() {
                                     }
                                     className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 pl-8 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
                                 />
-
                             </div>
-
                         </div>
 
                         {/* RESUMEN */}
 
                         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-background-secondary)] p-5">
-
                             <div className="space-y-3">
-
                                 <div className="flex items-center justify-between gap-4">
-
                                     <span className="text-sm text-[var(--color-text-secondary)]">
                                         Subtotal
                                     </span>
@@ -951,11 +1119,9 @@ export default function MercadoPagoConfiguracionPage() {
                                             maximumFractionDigits: 2,
                                         })}
                                     </span>
-
                                 </div>
 
                                 <div className="flex items-center justify-between gap-4">
-
                                     <span className="text-sm text-[var(--color-text-secondary)]">
                                         Recargo tarjeta (
                                         {porcentajeNumero.toFixed(2)}%)
@@ -968,13 +1134,10 @@ export default function MercadoPagoConfiguracionPage() {
                                             maximumFractionDigits: 2,
                                         })}
                                     </span>
-
                                 </div>
 
                                 <div className="border-t border-[var(--color-border)] pt-3">
-
                                     <div className="flex items-center justify-between gap-4">
-
                                         <span className="font-semibold text-[var(--color-text)]">
                                             Total
                                         </span>
@@ -989,14 +1152,10 @@ export default function MercadoPagoConfiguracionPage() {
                                                 }
                                             )}
                                         </span>
-
                                     </div>
-
                                 </div>
-
                             </div>
                         </div>
-
                     </div>
                 </Card>
 
@@ -1005,18 +1164,13 @@ export default function MercadoPagoConfiguracionPage() {
                 ====================================================== */}
 
                 <Card className="p-5 sm:p-6">
-
                     <h2 className="font-semibold text-[var(--color-text)]">
                         Cómo funcionará en el POS
                     </h2>
 
                     <div className="mt-4 grid gap-4 sm:grid-cols-3">
-
                         <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
-                            <div className="mb-2 text-xl">
-                                💵
-                            </div>
+                            <div className="mb-2 text-xl">💵</div>
 
                             <p className="font-medium text-[var(--color-text)]">
                                 Efectivo
@@ -1025,14 +1179,10 @@ export default function MercadoPagoConfiguracionPage() {
                             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                                 No tendrá recargo.
                             </p>
-
                         </div>
 
                         <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
-                            <div className="mb-2 text-xl">
-                                💳
-                            </div>
+                            <div className="mb-2 text-xl">💳</div>
 
                             <p className="font-medium text-[var(--color-text)]">
                                 Tarjeta
@@ -1041,14 +1191,10 @@ export default function MercadoPagoConfiguracionPage() {
                             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                                 Se aplicará el porcentaje configurado.
                             </p>
-
                         </div>
 
                         <div className="rounded-2xl border border-[var(--color-border)] p-4">
-
-                            <div className="mb-2 text-xl">
-                                🔀
-                            </div>
+                            <div className="mb-2 text-xl">🔀</div>
 
                             <p className="font-medium text-[var(--color-text)]">
                                 Pago mixto
@@ -1058,16 +1204,13 @@ export default function MercadoPagoConfiguracionPage() {
                                 El recargo se aplicará únicamente a la parte
                                 pagada con tarjeta.
                             </p>
-
                         </div>
-
                     </div>
                 </Card>
 
                 {/* BOTONES */}
 
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-
                     <button
                         type="button"
                         onClick={() => {
@@ -1090,9 +1233,7 @@ export default function MercadoPagoConfiguracionPage() {
                             ? "Guardando..."
                             : "Guardar configuración"}
                     </button>
-
                 </div>
-
             </div>
 
             <ModalMensaje
