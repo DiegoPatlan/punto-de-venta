@@ -43,3 +43,5 @@ next-env.d.ts
 
 # printer-service
 /printer-service/node_modules/
+.vercel
+.env*
