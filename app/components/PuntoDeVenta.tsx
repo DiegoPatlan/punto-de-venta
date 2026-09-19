@@ -1354,8 +1354,7 @@ export default function PuntoDeVenta({
                                 datosRecargo.porcentaje
                             ).toFixed(
                                 2
-                            )
-                            }% por pago con tarjeta.\n`;
+                            )}% por pago con tarjeta.\n`;
                     }
                 }
 
@@ -1914,6 +1913,42 @@ export default function PuntoDeVenta({
                 };
             }
 
+            /*
+            ==========================================
+            OBTENER SESIÓN DE SUPABASE
+            ==========================================
+            */
+
+            const {
+                data: {
+                    session,
+                },
+                error: sessionError,
+            } =
+                await supabasePOS.auth.getSession();
+
+            if (
+                sessionError ||
+                !session?.access_token
+            ) {
+                console.error(
+                    "❌ ERROR OBTENIENDO SESIÓN PARA MERCADO PAGO:",
+                    sessionError
+                );
+
+                return {
+                    ok: false,
+                    error:
+                        "La sesión de usuario no está disponible. Inicia sesión nuevamente.",
+                };
+            }
+
+            /*
+            ==========================================
+            CREAR ORDER
+            ==========================================
+            */
+
             const respuesta =
                 await fetch(
                     "/api/mercadopago/create-order",
@@ -1922,6 +1957,9 @@ export default function PuntoDeVenta({
                         headers: {
                             "Content-Type":
                                 "application/json",
+
+                            Authorization:
+                                `Bearer ${session.access_token}`,
                         },
                         body:
                             JSON.stringify({
@@ -2044,11 +2082,53 @@ export default function PuntoDeVenta({
             error?: string;
         }> => {
             try {
+                /*
+                ==========================================
+                OBTENER SESIÓN DE SUPABASE
+                ==========================================
+                */
+
+                const {
+                    data: {
+                        session,
+                    },
+                    error: sessionError,
+                } =
+                    await supabasePOS.auth.getSession();
+
+                if (
+                    sessionError ||
+                    !session?.access_token
+                ) {
+                    console.error(
+                        "❌ ERROR OBTENIENDO SESIÓN PARA CONSULTAR MERCADO PAGO:",
+                        sessionError
+                    );
+
+                    return {
+                        ok: false,
+                        error:
+                            "La sesión de usuario no está disponible. Inicia sesión nuevamente.",
+                    };
+                }
+
+                /*
+                ==========================================
+                CONSULTAR ORDER
+                ==========================================
+                */
+
                 const response =
                     await fetch(
                         `/api/mercadopago/order/${encodeURIComponent(orderId)}`,
                         {
                             method: "GET",
+
+                            headers: {
+                                Authorization:
+                                    `Bearer ${session.access_token}`,
+                            },
+
                             cache: "no-store",
                         }
                     );
@@ -2385,17 +2465,17 @@ export default function PuntoDeVenta({
     }
 
     /*
-==========================================
-MERCADO PAGO - CANCELAR ESPERA
-==========================================
-IMPORTANTE:
+    ==========================================
+    MERCADO PAGO - CANCELAR ESPERA
+    ==========================================
+    IMPORTANTE:
 
-Esto cancela la espera/polling del POS.
+    Esto cancela la espera/polling del POS.
 
-No intenta cancelar la Order remotamente
-en Mercado Pago.
-==========================================
-*/
+    No intenta cancelar la Order remotamente
+    en Mercado Pago.
+    ==========================================
+    */
 
     function cancelarMercadoPago() {
         mercadoPagoOperacionId.current += 1;
