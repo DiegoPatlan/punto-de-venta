@@ -250,7 +250,7 @@ export default function PuntoDeVenta({
                     )
                     .eq("activo", true)
                     .or(
-                        `nombre.ilike.% ${texto}%, telefono.ilike.% ${texto}%, email.ilike.% ${texto}% `
+                        `nombre.ilike.%${texto}%,telefono.ilike.%${texto}%,email.ilike.%${texto}%`
                     )
                     .order("nombre")
                     .limit(10);
