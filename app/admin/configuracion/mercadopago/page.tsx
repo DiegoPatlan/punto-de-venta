@@ -15,6 +15,12 @@ interface UsuarioActual {
     rol: string;
 }
 
+type DispositivoMercadoPago =
+    | "celular"
+    | "point_smart_1"
+    | "point_smart_2"
+    | "";
+
 interface ConfiguracionMercadoPago {
     id: string;
     negocio_id: string;
@@ -30,17 +36,32 @@ interface ConfiguracionMercadoPago {
     usuario_mercado_pago_id: string | null;
 }
 
+interface TerminalMercadoPago {
+    id: string;
+    terminal_id: string;
+    terminal_type: string | null;
+    serial_number: string | null;
+    nombre: string;
+    modelo: string;
+    estado: string | null;
+}
+
 export default function MercadoPagoConfiguracionPage() {
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [conectandoMP, setConectandoMP] = useState(false);
+
+    const [buscandoTerminales, setBuscandoTerminales] = useState(false);
+    const [terminales, setTerminales] = useState<TerminalMercadoPago[]>([]);
+    const [terminalSeleccionada, setTerminalSeleccionada] = useState("");
 
     const [recargoActivo, setRecargoActivo] = useState(false);
     const [porcentaje, setPorcentaje] = useState("3.50");
     const [montoEjemplo, setMontoEjemplo] = useState("100");
 
     const [terminalId, setTerminalId] = useState("");
-    const [dispositivo, setDispositivo] = useState("");
+    const [dispositivo, setDispositivo] =
+        useState<DispositivoMercadoPago>("");
 
     const [configuracionMP, setConfiguracionMP] =
         useState<ConfiguracionMercadoPago | null>(null);
@@ -129,9 +150,9 @@ export default function MercadoPagoConfiguracionPage() {
             }
 
             /*
-             * ---------------------------------------------------------
+             * =========================================================
              * CONFIGURACIÓN DEL NEGOCIO
-             * ---------------------------------------------------------
+             * =========================================================
              */
 
             const { data: negocio, error: negocioError } = await supabase
@@ -164,9 +185,9 @@ export default function MercadoPagoConfiguracionPage() {
             );
 
             /*
-             * ---------------------------------------------------------
+             * =========================================================
              * CONFIGURACIÓN DE MERCADO PAGO
-             * ---------------------------------------------------------
+             * =========================================================
              */
 
             const {
@@ -209,8 +230,30 @@ export default function MercadoPagoConfiguracionPage() {
                 configuracionTipada?.terminal_id ?? ""
             );
 
-            setDispositivo(
-                configuracionTipada?.dispositivo ?? ""
+            /*
+             * La BD utiliza valores técnicos:
+             *
+             * celular
+             * point_smart_1
+             * point_smart_2
+             *
+             * No usamos "Point Smart 2" internamente.
+             */
+            const dispositivoBD =
+                configuracionTipada?.dispositivo;
+
+            if (
+                dispositivoBD === "celular" ||
+                dispositivoBD === "point_smart_1" ||
+                dispositivoBD === "point_smart_2"
+            ) {
+                setDispositivo(dispositivoBD);
+            } else {
+                setDispositivo("");
+            }
+
+            setTerminalSeleccionada(
+                configuracionTipada?.terminal_id ?? ""
             );
         } catch (error) {
             console.error(
@@ -231,9 +274,383 @@ export default function MercadoPagoConfiguracionPage() {
     }
 
     /*
-     * -------------------------------------------------------------
+     * ================================================================
+     * BUSCAR TERMINALES DE MERCADO PAGO
+     * ================================================================
+     *
+     * La API determina el negocio mediante la sesión autenticada.
+     *
+     * No enviamos negocio_id desde el navegador.
+     *
+     * Esto mantiene el aislamiento entre negocios.
+     */
+
+    async function buscarTerminales() {
+        if (buscandoTerminales) {
+            return;
+        }
+
+        try {
+            setBuscandoTerminales(true);
+
+            const {
+                data: { session },
+                error: sessionError,
+            } = await supabase.auth.getSession();
+
+            if (sessionError) {
+                console.error(
+                    "Error obteniendo sesión para consultar terminales:",
+                    sessionError
+                );
+
+                throw new Error(
+                    "No se pudo obtener la sesión actual."
+                );
+            }
+
+            if (!session?.access_token) {
+                throw new Error(
+                    "La sesión del administrador no está disponible. Inicia sesión nuevamente."
+                );
+            }
+
+            const respuesta = await fetch(
+                "/api/mercadopago/terminals",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${session.access_token}`,
+                    },
+                    cache: "no-store",
+                }
+            );
+
+            let resultado: any = null;
+
+            try {
+                resultado = await respuesta.json();
+            } catch {
+                resultado = null;
+            }
+
+            if (!respuesta.ok || !resultado?.ok) {
+                console.error(
+                    "Error consultando terminales de Mercado Pago:",
+                    resultado
+                );
+
+                throw new Error(
+                    resultado?.error ||
+                    "No se pudieron consultar las terminales de Mercado Pago."
+                );
+            }
+
+            /*
+             * La API puede devolver:
+             *
+             * {
+             *   ok: true,
+             *   terminales: [...]
+             * }
+             *
+             * o:
+             *
+             * {
+             *   ok: true,
+             *   data: [...]
+             * }
+             *
+             * o:
+             *
+             * {
+             *   ok: true,
+             *   terminals: [...]
+             * }
+             *
+             * También soportamos una respuesta directa como arreglo.
+             */
+
+            let terminalesRespuesta: any[] = [];
+
+            if (Array.isArray(resultado?.terminales)) {
+                terminalesRespuesta = resultado.terminales;
+            } else if (Array.isArray(resultado?.terminals)) {
+                terminalesRespuesta = resultado.terminals;
+            } else if (Array.isArray(resultado?.data)) {
+                terminalesRespuesta = resultado.data;
+            } else if (Array.isArray(resultado)) {
+                terminalesRespuesta = resultado;
+            }
+
+            const terminalesNormalizadas: TerminalMercadoPago[] =
+                terminalesRespuesta
+                    .map((terminal: any) => {
+                        const id =
+                            terminal?.id ??
+                            terminal?.terminal_id ??
+                            terminal?.terminalId ??
+                            "";
+
+                        const terminalIdReal =
+                            terminal?.terminal_id ??
+                            terminal?.terminalId ??
+                            terminal?.id ??
+                            "";
+
+                        const terminalType =
+                            terminal?.terminal_type ??
+                            terminal?.terminalType ??
+                            terminal?.type ??
+                            null;
+
+                        const serialNumber =
+                            terminal?.serial_number ??
+                            terminal?.serial ??
+                            terminal?.serialNumber ??
+                            terminal?.device_id ??
+                            null;
+
+                        const modelo =
+                            terminal?.modelo ??
+                            terminal?.model ??
+                            terminal?.model_name ??
+                            terminalType ??
+                            "Point";
+
+                        const nombre =
+                            terminal?.nombre ??
+                            terminal?.name ??
+                            terminal?.description ??
+                            (serialNumber
+                                ? `Point - ${serialNumber}`
+                                : "Terminal Point");
+
+                        const estado =
+                            terminal?.estado ??
+                            terminal?.status ??
+                            null;
+
+                        if (!id || !terminalIdReal) {
+                            return null;
+                        }
+
+                        return {
+                            id: String(id),
+                            terminal_id: String(terminalIdReal),
+                            terminal_type: terminalType
+                                ? String(terminalType)
+                                : null,
+                            serial_number: serialNumber
+                                ? String(serialNumber)
+                                : null,
+                            nombre: String(nombre),
+                            modelo: String(modelo),
+                            estado: estado
+                                ? String(estado)
+                                : null,
+                        };
+                    })
+                    .filter(
+                        (
+                            terminal: TerminalMercadoPago | null
+                        ): terminal is TerminalMercadoPago =>
+                            terminal !== null
+                    );
+
+            setTerminales(terminalesNormalizadas);
+
+            if (terminalesNormalizadas.length === 0) {
+                mostrarMensaje(
+                    "info",
+                    "No se encontraron terminales",
+                    "Mercado Pago no devolvió terminales disponibles para la cuenta conectada. Verifica que la Point Smart esté vinculada a esta cuenta y tenga habilitado el modo de operación para integración con el Punto de Venta."
+                );
+
+                return;
+            }
+
+            /*
+             * Si ya existe una terminal configurada,
+             * conservamos esa selección.
+             */
+
+            const terminalExistente =
+                terminalesNormalizadas.find(
+                    (terminal) =>
+                        terminal.terminal_id === terminalId
+                );
+
+            if (terminalExistente) {
+                setTerminalSeleccionada(
+                    terminalExistente.terminal_id
+                );
+
+                /*
+                 * Si la terminal existente puede identificarse como
+                 * Point Smart 2, corregimos automáticamente el
+                 * dispositivo técnico.
+                 */
+                const dispositivoDetectado =
+                    detectarDispositivo(
+                        terminalExistente
+                    );
+
+                if (dispositivoDetectado) {
+                    setDispositivo(
+                        dispositivoDetectado
+                    );
+                }
+
+                mostrarMensaje(
+                    "exito",
+                    "Terminal encontrada",
+                    `La terminal configurada actualmente fue encontrada en Mercado Pago: ${terminalExistente.nombre}.`
+                );
+
+                return;
+            }
+
+            /*
+             * Si solamente existe una terminal, la seleccionamos
+             * automáticamente.
+             */
+
+            if (terminalesNormalizadas.length === 1) {
+                const unicaTerminal =
+                    terminalesNormalizadas[0];
+
+                setTerminalSeleccionada(
+                    unicaTerminal.terminal_id
+                );
+
+                setTerminalId(
+                    unicaTerminal.terminal_id
+                );
+
+                const dispositivoDetectado =
+                    detectarDispositivo(
+                        unicaTerminal
+                    );
+
+                if (dispositivoDetectado) {
+                    setDispositivo(
+                        dispositivoDetectado
+                    );
+                }
+
+                const textoTerminal =
+                    `${unicaTerminal.nombre}${unicaTerminal.serial_number
+                        ? ` (${unicaTerminal.serial_number})`
+                        : ""
+                    }`;
+
+                mostrarMensaje(
+                    "exito",
+                    "Terminal encontrada",
+                    `Mercado Pago encontró una terminal disponible: ${textoTerminal}. La terminal quedó seleccionada. Presiona "Guardar configuración" para asociarla a este negocio.`
+                );
+
+                return;
+            }
+
+            mostrarMensaje(
+                "exito",
+                "Terminales encontradas",
+                `Mercado Pago devolvió ${terminalesNormalizadas.length} terminales. Selecciona la Point que utilizará este negocio.`
+            );
+        } catch (error) {
+            console.error(
+                "Error buscando terminales de Mercado Pago:",
+                error
+            );
+
+            mostrarMensaje(
+                "error",
+                "No se pudieron consultar las terminales",
+                error instanceof Error
+                    ? error.message
+                    : "Ocurrió un error al consultar las terminales de Mercado Pago."
+            );
+        } finally {
+            setBuscandoTerminales(false);
+        }
+    }
+
+    /*
+     * ================================================================
+     * DETECTAR TIPO DE POINT
+     * ================================================================
+     */
+
+    function detectarDispositivo(
+        terminal: TerminalMercadoPago
+    ): DispositivoMercadoPago {
+        const informacionTerminal =
+            `${terminal.terminal_type ?? ""} ${terminal.modelo
+                } ${terminal.nombre} ${terminal.serial_number ?? ""
+                }`.toLowerCase();
+
+        if (
+            informacionTerminal.includes("smart 2") ||
+            informacionTerminal.includes("n950") ||
+            informacionTerminal.includes("newland_n950") ||
+            informacionTerminal.includes("newland n950")
+        ) {
+            return "point_smart_2";
+        }
+
+        if (
+            informacionTerminal.includes("smart 1")
+        ) {
+            return "point_smart_1";
+        }
+
+        return "";
+    }
+
+    /*
+     * ================================================================
+     * SELECCIONAR TERMINAL
+     * ================================================================
+     */
+
+    function seleccionarTerminal(
+        terminalSeleccionadaId: string
+    ) {
+        setTerminalSeleccionada(
+            terminalSeleccionadaId
+        );
+
+        const terminal =
+            terminales.find(
+                (item) =>
+                    item.terminal_id ===
+                    terminalSeleccionadaId
+            );
+
+        if (!terminal) {
+            return;
+        }
+
+        setTerminalId(
+            terminal.terminal_id
+        );
+
+        const dispositivoDetectado =
+            detectarDispositivo(terminal);
+
+        if (dispositivoDetectado) {
+            setDispositivo(
+                dispositivoDetectado
+            );
+        }
+    }
+
+    /*
+     * ================================================================
      * CONECTAR MERCADO PAGO
-     * -------------------------------------------------------------
+     * ================================================================
      */
 
     async function conectarMercadoPago() {
@@ -266,13 +683,6 @@ export default function MercadoPagoConfiguracionPage() {
                 );
             }
 
-            console.log("Sesión encontrada:", {
-                existe: !!session,
-                userId: session?.user?.id,
-                expira: session?.expires_at,
-                tieneAccessToken: !!session?.access_token,
-            });
-
             const respuesta = await fetch(
                 "/api/mercadopago/oauth/connect",
                 {
@@ -284,7 +694,8 @@ export default function MercadoPagoConfiguracionPage() {
                 }
             );
 
-            const resultado = await respuesta.json();
+            const resultado =
+                await respuesta.json();
 
             if (!respuesta.ok || !resultado?.ok) {
                 console.error(
@@ -304,14 +715,8 @@ export default function MercadoPagoConfiguracionPage() {
                 );
             }
 
-            /*
-             * Redirigimos al administrador a Mercado Pago.
-             *
-             * La URL contiene un state generado en el servidor.
-             * No almacenamos tokens en el navegador.
-             */
-
-            window.location.href = resultado.authorization_url;
+            window.location.href =
+                resultado.authorization_url;
         } catch (error) {
             console.error(
                 "Error conectando Mercado Pago:",
@@ -331,17 +736,20 @@ export default function MercadoPagoConfiguracionPage() {
     }
 
     /*
-     * -------------------------------------------------------------
+     * ================================================================
      * GUARDAR CONFIGURACIÓN
-     * -------------------------------------------------------------
+     * ================================================================
      */
 
     async function guardarConfiguracion() {
         try {
-            const porcentajeNumero = Number(porcentaje);
+            const porcentajeNumero =
+                Number(porcentaje);
 
             if (
-                !Number.isFinite(porcentajeNumero) ||
+                !Number.isFinite(
+                    porcentajeNumero
+                ) ||
                 porcentajeNumero < 0 ||
                 porcentajeNumero > 100
             ) {
@@ -356,7 +764,8 @@ export default function MercadoPagoConfiguracionPage() {
 
             setGuardando(true);
 
-            const usuario = (await obtenerUsuarioActual()) as
+            const usuario =
+                (await obtenerUsuarioActual()) as
                 | UsuarioActual
                 | null;
 
@@ -367,20 +776,29 @@ export default function MercadoPagoConfiguracionPage() {
             }
 
             /*
-             * ---------------------------------------------------------
+             * =========================================================
              * GUARDAR RECARGO
-             * ---------------------------------------------------------
+             * =========================================================
              */
 
-            const { error: updateError } = await supabase
+            const {
+                error: updateError,
+            } = await supabase
                 .from("negocios")
                 .update({
-                    recargo_tarjeta_activo: recargoActivo,
-                    recargo_tarjeta_porcentaje: Number(
-                        porcentajeNumero.toFixed(2)
-                    ),
+                    recargo_tarjeta_activo:
+                        recargoActivo,
+                    recargo_tarjeta_porcentaje:
+                        Number(
+                            porcentajeNumero.toFixed(
+                                2
+                            )
+                        ),
                 })
-                .eq("id", usuario.negocio_id);
+                .eq(
+                    "id",
+                    usuario.negocio_id
+                );
 
             if (updateError) {
                 console.error(
@@ -394,35 +812,49 @@ export default function MercadoPagoConfiguracionPage() {
             }
 
             /*
-             * ---------------------------------------------------------
-             * GUARDAR CONFIGURACIÓN DE TERMINAL
-             * ---------------------------------------------------------
-             *
-             * El terminal_id puede permanecer vacío mientras el
-             * negocio todavía no tenga una Point Smart.
+             * =========================================================
+             * VALIDACIÓN DE TERMINAL
+             * =========================================================
              */
 
-            const terminalIdLimpio = terminalId.trim();
+            const terminalIdLimpio =
+                terminalId.trim();
 
+            /*
+             * Si hay terminal seleccionada, el dispositivo debe ser
+             * uno de los valores permitidos por la base.
+             */
             if (
                 terminalIdLimpio.length > 0 &&
-                !dispositivo
+                dispositivo !== "point_smart_1" &&
+                dispositivo !== "point_smart_2"
             ) {
                 mostrarMensaje(
                     "confirmacion",
                     "Falta seleccionar el dispositivo",
-                    "Selecciona si la terminal corresponde a una Point Smart 1 o Point Smart 2."
+                    "Selecciona Point Smart 1 o Point Smart 2 antes de guardar la terminal."
                 );
 
                 return;
             }
 
-            const { data: configuracionExistente, error: buscarError } =
-                await supabase
-                    .from("configuracion_mercado_pago")
-                    .select("id")
-                    .eq("negocio_id", usuario.negocio_id)
-                    .maybeSingle();
+            /*
+             * Si no hay terminal, permitimos guardar solamente el
+             * recargo/configuración general.
+             */
+            const {
+                data: configuracionExistente,
+                error: buscarError,
+            } = await supabase
+                .from(
+                    "configuracion_mercado_pago"
+                )
+                .select("id")
+                .eq(
+                    "negocio_id",
+                    usuario.negocio_id
+                )
+                .maybeSingle();
 
             if (buscarError) {
                 console.error(
@@ -435,72 +867,124 @@ export default function MercadoPagoConfiguracionPage() {
                 );
             }
 
+            /*
+             * IMPORTANTE:
+             *
+             * La base de datos no guarda "Point Smart 2".
+             * Guarda "point_smart_2".
+             *
+             * Tampoco enviamos negocio_id desde el navegador al UPDATE.
+             * El negocio ya está determinado por el usuario autenticado.
+             */
+
             const datosTerminal = {
                 terminal_id:
                     terminalIdLimpio.length > 0
                         ? terminalIdLimpio
                         : null,
+
                 dispositivo:
-                    dispositivo.trim().length > 0
+                    terminalIdLimpio.length > 0
                         ? dispositivo
-                        : null,
+                        : dispositivo === "celular"
+                            ? "celular"
+                            : null,
             };
 
-            if (configuracionExistente?.id) {
-                const { error: terminalUpdateError } = await supabase
-                    .from("configuracion_mercado_pago")
-                    .update(datosTerminal)
-                    .eq("id", configuracionExistente.id);
+            if (
+                configuracionExistente?.id
+            ) {
+                const {
+                    error:
+                    terminalUpdateError,
+                } = await supabase
+                    .from(
+                        "configuracion_mercado_pago"
+                    )
+                    .update(
+                        datosTerminal
+                    )
+                    .eq(
+                        "id",
+                        configuracionExistente.id
+                    )
+                    .eq(
+                        "negocio_id",
+                        usuario.negocio_id
+                    );
 
-                if (terminalUpdateError) {
+                if (
+                    terminalUpdateError
+                ) {
                     console.error(
                         "Error guardando terminal de Mercado Pago:",
                         terminalUpdateError
                     );
 
                     throw new Error(
+                        terminalUpdateError.message ||
                         "No se pudo guardar la configuración de la terminal."
                     );
                 }
             } else {
-                const { error: terminalInsertError } = await supabase
-                    .from("configuracion_mercado_pago")
+                const {
+                    error:
+                    terminalInsertError,
+                } = await supabase
+                    .from(
+                        "configuracion_mercado_pago"
+                    )
                     .insert({
-                        negocio_id: usuario.negocio_id,
+                        negocio_id:
+                            usuario.negocio_id,
+
                         habilitado: true,
+
                         modo: "produccion",
-                        estado_conexion: "desconectado",
+
+                        estado_conexion:
+                            "desconectado",
+
                         ...datosTerminal,
                     });
 
-                if (terminalInsertError) {
+                if (
+                    terminalInsertError
+                ) {
                     console.error(
                         "Error creando configuración de terminal:",
                         terminalInsertError
                     );
 
                     throw new Error(
+                        terminalInsertError.message ||
                         "No se pudo crear la configuración de la terminal."
                     );
                 }
             }
 
-            setPorcentaje(porcentajeNumero.toFixed(2));
+            setPorcentaje(
+                porcentajeNumero.toFixed(2)
+            );
 
-            setConfiguracionMP((actual) =>
-                actual
-                    ? {
-                        ...actual,
-                        terminal_id:
-                            terminalIdLimpio.length > 0
-                                ? terminalIdLimpio
-                                : null,
-                        dispositivo:
-                            dispositivo.trim().length > 0
-                                ? dispositivo
-                                : null,
-                    }
-                    : actual
+            setConfiguracionMP(
+                (actual) =>
+                    actual
+                        ? {
+                            ...actual,
+
+                            terminal_id:
+                                terminalIdLimpio.length >
+                                    0
+                                    ? terminalIdLimpio
+                                    : null,
+
+                            dispositivo:
+                                dispositivo
+                                    ? dispositivo
+                                    : null,
+                        }
+                        : actual
             );
 
             mostrarMensaje(
@@ -537,13 +1021,15 @@ export default function MercadoPagoConfiguracionPage() {
     }
 
     /*
-     * -------------------------------------------------------------
+     * ================================================================
      * ESTADO DE CONEXIÓN
-     * -------------------------------------------------------------
+     * ================================================================
      */
 
     function obtenerTextoEstado() {
-        switch (configuracionMP?.estado_conexion) {
+        switch (
+        configuracionMP?.estado_conexion
+        ) {
             case "conectado":
                 return "Conectado";
 
@@ -560,7 +1046,9 @@ export default function MercadoPagoConfiguracionPage() {
     }
 
     function obtenerClaseEstado() {
-        switch (configuracionMP?.estado_conexion) {
+        switch (
+        configuracionMP?.estado_conexion
+        ) {
             case "conectado":
                 return "border-emerald-200 bg-emerald-50 text-emerald-700";
 
@@ -576,15 +1064,37 @@ export default function MercadoPagoConfiguracionPage() {
         }
     }
 
-    const monto = Number(montoEjemplo) || 0;
+    function obtenerNombreDispositivo(
+        valor: string | null | undefined
+    ) {
+        switch (valor) {
+            case "celular":
+                return "Celular";
 
-    const porcentajeNumero = Number(porcentaje) || 0;
+            case "point_smart_1":
+                return "Point Smart 1";
+
+            case "point_smart_2":
+                return "Point Smart 2";
+
+            default:
+                return "No configurado";
+        }
+    }
+
+    const monto =
+        Number(montoEjemplo) || 0;
+
+    const porcentajeNumero =
+        Number(porcentaje) || 0;
 
     const recargo = recargoActivo
-        ? monto * (porcentajeNumero / 100)
+        ? monto *
+        (porcentajeNumero / 100)
         : 0;
 
-    const totalConRecargo = monto + recargo;
+    const totalConRecargo =
+        monto + recargo;
 
     if (cargando) {
         return (
@@ -599,7 +1109,9 @@ export default function MercadoPagoConfiguracionPage() {
     return (
         <>
             <div className="space-y-6">
-                {/* ENCABEZADO */}
+                {/* =====================================================
+                    ENCABEZADO
+                ====================================================== */}
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -670,7 +1182,6 @@ export default function MercadoPagoConfiguracionPage() {
                                 className={`inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-sm font-semibold ${obtenerClaseEstado()}`}
                             >
                                 <span className="mr-2 h-2 w-2 rounded-full bg-current" />
-
                                 {obtenerTextoEstado()}
                             </span>
                         </div>
@@ -718,15 +1229,17 @@ export default function MercadoPagoConfiguracionPage() {
                                         </p>
 
                                         <p className="font-medium text-[var(--color-text)]">
-                                            {dispositivo ||
-                                                "No configurado"}
+                                            {obtenerNombreDispositivo(
+                                                dispositivo
+                                            )}
                                         </p>
                                     </div>
                                 </div>
 
                                 <p className="text-sm text-[var(--color-text-secondary)]">
-                                    Se configurará cuando se disponga de un
-                                    Point compatible.
+                                    {dispositivo
+                                        ? "Dispositivo configurado para este negocio."
+                                        : "Se configurará cuando se seleccione una terminal Point compatible."}
                                 </p>
                             </div>
 
@@ -738,12 +1251,12 @@ export default function MercadoPagoConfiguracionPage() {
                                         🖥️
                                     </div>
 
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
                                             Terminal
                                         </p>
 
-                                        <p className="font-medium text-[var(--color-text)]">
+                                        <p className="break-all font-medium text-[var(--color-text)]">
                                             {terminalId ||
                                                 "No configurada"}
                                         </p>
@@ -751,8 +1264,9 @@ export default function MercadoPagoConfiguracionPage() {
                                 </div>
 
                                 <p className="text-sm text-[var(--color-text-secondary)]">
-                                    El ID se agregará cuando el negocio tenga
-                                    una Point Smart compatible.
+                                    {terminalId
+                                        ? "Terminal Point asociada a este negocio."
+                                        : "Selecciona una terminal disponible para configurar el Punto de Venta."}
                                 </p>
                             </div>
 
@@ -795,22 +1309,169 @@ export default function MercadoPagoConfiguracionPage() {
                                         🖥️
                                     </div>
 
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-semibold text-[var(--color-text)]">
                                             Configuración de terminal
                                         </p>
 
                                         <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
-                                            Deja estos campos vacíos mientras
-                                            el negocio todavía no tenga una
-                                            Point Smart. Cuando llegue la
-                                            terminal, solamente tendrás que
-                                            seleccionar el modelo e introducir
-                                            su ID.
+                                            Consulta las terminales Point
+                                            disponibles en la cuenta de
+                                            Mercado Pago de este negocio y
+                                            selecciona la que utilizará el
+                                            Punto de Venta.
                                         </p>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* BUSCAR TERMINALES */}
+
+                            <div className="mb-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] p-4">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-[var(--color-text)]">
+                                            Terminales disponibles
+                                        </p>
+
+                                        <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
+                                            Consulta directamente a Mercado
+                                            Pago las Point disponibles para
+                                            la cuenta conectada.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            buscarTerminales
+                                        }
+                                        disabled={
+                                            buscandoTerminales ||
+                                            guardando ||
+                                            conectandoMP ||
+                                            configuracionMP?.estado_conexion !==
+                                            "conectado"
+                                        }
+                                        className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--color-primary)] bg-[var(--color-background)] px-5 py-3 text-sm font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-primary)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {buscandoTerminales
+                                            ? "Buscando..."
+                                            : "🔍 Buscar terminales"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* LISTA DE TERMINALES */}
+
+                            {terminales.length > 0 && (
+                                <div className="mb-5 space-y-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-[var(--color-text)]">
+                                            Selecciona una terminal
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                                            La terminal seleccionada quedará
+                                            asociada a este negocio al guardar
+                                            la configuración.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-3">
+                                        {terminales.map(
+                                            (terminal) => {
+                                                const seleccionada =
+                                                    terminalSeleccionada ===
+                                                    terminal.terminal_id;
+
+                                                return (
+                                                    <button
+                                                        key={
+                                                            terminal.terminal_id
+                                                        }
+                                                        type="button"
+                                                        onClick={() =>
+                                                            seleccionarTerminal(
+                                                                terminal.terminal_id
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            guardando ||
+                                                            buscandoTerminales
+                                                        }
+                                                        className={`w-full rounded-2xl border p-4 text-left transition ${seleccionada
+                                                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-2 ring-[var(--color-primary)]/20"
+                                                            : "border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-primary)]/50"
+                                                            } disabled:cursor-not-allowed disabled:opacity-60`}
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            <div
+                                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${seleccionada
+                                                                    ? "bg-[var(--color-primary)] text-white"
+                                                                    : "bg-[var(--color-background-secondary)]"
+                                                                    }`}
+                                                            >
+                                                                🖥️
+                                                            </div>
+
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                                                    <p className="font-semibold text-[var(--color-text)]">
+                                                                        {
+                                                                            terminal.nombre
+                                                                        }
+                                                                    </p>
+
+                                                                    {seleccionada && (
+                                                                        <span className="w-fit rounded-full bg-[var(--color-primary)] px-2.5 py-1 text-xs font-semibold text-white">
+                                                                            Seleccionada
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <p className="mt-1 break-all text-sm text-[var(--color-text-secondary)]">
+                                                                    ID:{" "}
+                                                                    {
+                                                                        terminal.terminal_id
+                                                                    }
+                                                                </p>
+
+                                                                {terminal.serial_number && (
+                                                                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                                                                        Serie:{" "}
+                                                                        {
+                                                                            terminal.serial_number
+                                                                        }
+                                                                    </p>
+                                                                )}
+
+                                                                {terminal.modelo && (
+                                                                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                                                                        Modelo:{" "}
+                                                                        {
+                                                                            terminal.modelo
+                                                                        }
+                                                                    </p>
+                                                                )}
+
+                                                                {terminal.estado && (
+                                                                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                                                                        Estado:{" "}
+                                                                        {
+                                                                            terminal.estado
+                                                                        }
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            }
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {/* DISPOSITIVO */}
@@ -827,23 +1488,34 @@ export default function MercadoPagoConfiguracionPage() {
                                         id="dispositivo-mercado-pago"
                                         value={dispositivo}
                                         onChange={(e) =>
-                                            setDispositivo(e.target.value)
+                                            setDispositivo(
+                                                e.target
+                                                    .value as DispositivoMercadoPago
+                                            )
                                         }
-                                        disabled={guardando}
+                                        disabled={
+                                            guardando ||
+                                            buscandoTerminales
+                                        }
                                         className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <option value="">
-                                            Seleccionar cuando exista una terminal
+                                            Seleccionar dispositivo
                                         </option>
 
-                                        <option value="Point Smart 1">
+                                        <option value="point_smart_1">
                                             Point Smart 1
                                         </option>
 
-                                        <option value="Point Smart 2">
+                                        <option value="point_smart_2">
                                             Point Smart 2
                                         </option>
                                     </select>
+
+                                    <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                                        Selecciona el modelo físico de la
+                                        terminal que utilizará este negocio.
+                                    </p>
                                 </div>
 
                                 {/* TERMINAL ID */}
@@ -860,17 +1532,27 @@ export default function MercadoPagoConfiguracionPage() {
                                         id="terminal-id"
                                         type="text"
                                         value={terminalId}
-                                        onChange={(e) =>
-                                            setTerminalId(e.target.value)
+                                        onChange={(e) => {
+                                            setTerminalId(
+                                                e.target.value
+                                            );
+
+                                            setTerminalSeleccionada(
+                                                e.target.value
+                                            );
+                                        }}
+                                        placeholder="Selecciona una terminal o introduce su ID"
+                                        disabled={
+                                            guardando ||
+                                            buscandoTerminales
                                         }
-                                        placeholder="Se configurará cuando llegue la Point Smart"
-                                        disabled={guardando}
                                         className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
                                     />
 
                                     <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-                                        No introduzcas aquí el terminal de
-                                        sandbox.
+                                        Se recomienda seleccionar una
+                                        terminal detectada automáticamente por
+                                        Mercado Pago.
                                     </p>
                                 </div>
                             </div>
@@ -887,16 +1569,23 @@ export default function MercadoPagoConfiguracionPage() {
 
                                     <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
                                         Autoriza de forma segura la cuenta de
-                                        Mercado Pago que utilizará este negocio.
-                                        Los tokens de acceso se almacenan de
-                                        forma cifrada en el servidor.
+                                        Mercado Pago que utilizará este
+                                        negocio. Los tokens de acceso se
+                                        almacenan de forma cifrada en el
+                                        servidor.
                                     </p>
                                 </div>
 
                                 <button
                                     type="button"
-                                    onClick={conectarMercadoPago}
-                                    disabled={conectandoMP || guardando}
+                                    onClick={
+                                        conectarMercadoPago
+                                    }
+                                    disabled={
+                                        conectandoMP ||
+                                        guardando ||
+                                        buscandoTerminales
+                                    }
                                     className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {conectandoMP
@@ -913,7 +1602,9 @@ export default function MercadoPagoConfiguracionPage() {
 
                         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
                             <div className="flex gap-3">
-                                <div className="text-lg">ℹ️</div>
+                                <div className="text-lg">
+                                    ℹ️
+                                </div>
 
                                 <div>
                                     <p className="text-sm font-semibold text-blue-900">
@@ -974,10 +1665,15 @@ export default function MercadoPagoConfiguracionPage() {
                             <button
                                 type="button"
                                 role="switch"
-                                aria-checked={recargoActivo}
+                                aria-checked={
+                                    recargoActivo
+                                }
                                 disabled={guardando}
                                 onClick={() =>
-                                    setRecargoActivo((actual) => !actual)
+                                    setRecargoActivo(
+                                        (actual) =>
+                                            !actual
+                                    )
                                 }
                                 className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${recargoActivo
                                     ? "bg-[var(--color-primary)]"
@@ -1013,12 +1709,18 @@ export default function MercadoPagoConfiguracionPage() {
                                     min="0"
                                     max="100"
                                     step="0.01"
-                                    value={porcentaje}
+                                    value={
+                                        porcentaje
+                                    }
                                     onChange={(e) =>
-                                        setPorcentaje(e.target.value)
+                                        setPorcentaje(
+                                            e.target
+                                                .value
+                                        )
                                     }
                                     disabled={
-                                        !recargoActivo || guardando
+                                        !recargoActivo ||
+                                        guardando
                                     }
                                     className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 pr-12 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
@@ -1037,7 +1739,9 @@ export default function MercadoPagoConfiguracionPage() {
 
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                             <div className="flex gap-3">
-                                <div className="text-lg">⚠️</div>
+                                <div className="text-lg">
+                                    ⚠️
+                                </div>
 
                                 <div>
                                     <p className="text-sm font-semibold text-amber-900">
@@ -1094,9 +1798,14 @@ export default function MercadoPagoConfiguracionPage() {
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={montoEjemplo}
+                                    value={
+                                        montoEjemplo
+                                    }
                                     onChange={(e) =>
-                                        setMontoEjemplo(e.target.value)
+                                        setMontoEjemplo(
+                                            e.target
+                                                .value
+                                        )
                                     }
                                     className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 pl-8 text-[var(--color-text)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
                                 />
@@ -1114,25 +1823,34 @@ export default function MercadoPagoConfiguracionPage() {
 
                                     <span className="font-medium text-[var(--color-text)]">
                                         $
-                                        {monto.toLocaleString("es-MX", {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })}
+                                        {monto.toLocaleString(
+                                            "es-MX",
+                                            {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2,
+                                            }
+                                        )}
                                     </span>
                                 </div>
 
                                 <div className="flex items-center justify-between gap-4">
                                     <span className="text-sm text-[var(--color-text-secondary)]">
                                         Recargo tarjeta (
-                                        {porcentajeNumero.toFixed(2)}%)
+                                        {porcentajeNumero.toFixed(
+                                            2
+                                        )}
+                                        %)
                                     </span>
 
                                     <span className="font-medium text-[var(--color-text)]">
                                         $
-                                        {recargo.toLocaleString("es-MX", {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })}
+                                        {recargo.toLocaleString(
+                                            "es-MX",
+                                            {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2,
+                                            }
+                                        )}
                                     </span>
                                 </div>
 
@@ -1170,7 +1888,9 @@ export default function MercadoPagoConfiguracionPage() {
 
                     <div className="mt-4 grid gap-4 sm:grid-cols-3">
                         <div className="rounded-2xl border border-[var(--color-border)] p-4">
-                            <div className="mb-2 text-xl">💵</div>
+                            <div className="mb-2 text-xl">
+                                💵
+                            </div>
 
                             <p className="font-medium text-[var(--color-text)]">
                                 Efectivo
@@ -1182,7 +1902,9 @@ export default function MercadoPagoConfiguracionPage() {
                         </div>
 
                         <div className="rounded-2xl border border-[var(--color-border)] p-4">
-                            <div className="mb-2 text-xl">💳</div>
+                            <div className="mb-2 text-xl">
+                                💳
+                            </div>
 
                             <p className="font-medium text-[var(--color-text)]">
                                 Tarjeta
@@ -1194,7 +1916,9 @@ export default function MercadoPagoConfiguracionPage() {
                         </div>
 
                         <div className="rounded-2xl border border-[var(--color-border)] p-4">
-                            <div className="mb-2 text-xl">🔀</div>
+                            <div className="mb-2 text-xl">
+                                🔀
+                            </div>
 
                             <p className="font-medium text-[var(--color-text)]">
                                 Pago mixto
@@ -1208,7 +1932,9 @@ export default function MercadoPagoConfiguracionPage() {
                     </div>
                 </Card>
 
-                {/* BOTONES */}
+                {/* =====================================================
+                    BOTONES
+                ====================================================== */}
 
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button
@@ -1217,7 +1943,11 @@ export default function MercadoPagoConfiguracionPage() {
                             window.location.href =
                                 "/admin/configuracion";
                         }}
-                        disabled={guardando || conectandoMP}
+                        disabled={
+                            guardando ||
+                            conectandoMP ||
+                            buscandoTerminales
+                        }
                         className="rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-5 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:bg-[var(--color-background-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         Cancelar
@@ -1225,8 +1955,14 @@ export default function MercadoPagoConfiguracionPage() {
 
                     <button
                         type="button"
-                        onClick={guardarConfiguracion}
-                        disabled={guardando || conectandoMP}
+                        onClick={
+                            guardarConfiguracion
+                        }
+                        disabled={
+                            guardando ||
+                            conectandoMP ||
+                            buscandoTerminales
+                        }
                         className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {guardando

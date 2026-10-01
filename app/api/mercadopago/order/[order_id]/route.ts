@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@supabase/supabase-js";
 
-import { descifrarToken } from "../../../../../lib/mercadopago/cifrado";
+import { obtenerCredencialesMercadoPago } from "../../../../../lib/mercadopago/credenciales";
 
 type Params = {
     params: Promise<{
@@ -67,7 +67,9 @@ export async function GET(
 
         if (
             !authorization ||
-            !authorization.toLowerCase().startsWith("bearer ")
+            !authorization
+                .toLowerCase()
+                .startsWith("bearer ")
         ) {
             return NextResponse.json(
                 {
@@ -81,7 +83,9 @@ export async function GET(
         }
 
         const accessTokenUsuario =
-            authorization.substring(7).trim();
+            authorization
+                .substring(7)
+                .trim();
 
         if (!accessTokenUsuario) {
             return NextResponse.json(
@@ -168,7 +172,8 @@ export async function GET(
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "No se pudo identificar el negocio del usuario.",
+                    error:
+                        "No se pudo identificar el negocio del usuario.",
                 },
                 {
                     status: 403,
@@ -180,7 +185,8 @@ export async function GET(
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "El usuario está inactivo.",
+                    error:
+                        "El usuario está inactivo.",
                 },
                 {
                     status: 403,
@@ -195,7 +201,8 @@ export async function GET(
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "El usuario no tiene un negocio asociado.",
+                    error:
+                        "El usuario no tiene un negocio asociado.",
                 },
                 {
                     status: 403,
@@ -231,7 +238,8 @@ export async function GET(
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "No se pudo consultar la Order local.",
+                    error:
+                        "No se pudo consultar la Order local.",
                 },
                 {
                     status: 500,
@@ -243,7 +251,8 @@ export async function GET(
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "La Order de Mercado Pago no existe.",
+                    error:
+                        "La Order de Mercado Pago no existe.",
                 },
                 {
                     status: 404,
@@ -252,7 +261,7 @@ export async function GET(
         }
 
         // =========================================================
-        // 7. VALIDAR QUE LA ORDER PERTENEZCA AL NEGOCIO
+        // 7. VALIDAR QUE LA ORDER PERTENEZCA AL NEGOCIO ACTUAL
         // =========================================================
 
         if (
@@ -272,7 +281,8 @@ export async function GET(
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "La Order no pertenece al negocio actual.",
+                    error:
+                        "La Order no pertenece al negocio actual.",
                 },
                 {
                     status: 403,
@@ -281,38 +291,36 @@ export async function GET(
         }
 
         // =========================================================
-        // 8. OBTENER CREDENCIALES OAUTH DEL NEGOCIO
+        // 8. OBTENER CREDENCIALES DEL NEGOCIO
+        // =========================================================
+        //
+        // IMPORTANTE:
+        // Este helper busca las credenciales por negocio_id
+        // y además renueva automáticamente el access token
+        // cuando está próximo a expirar.
+        //
+        // Esto mantiene aisladas las cuentas de Mercado Pago
+        // entre los diferentes negocios.
         // =========================================================
 
-        const {
-            data: credenciales,
-            error: errorCredenciales,
-        } =
-            await supabaseAdmin
-                .from(
-                    "mercado_pago_credenciales"
-                )
-                .select(
-                    "access_token_encrypted, expires_at"
-                )
-                .eq(
-                    "negocio_id",
-                    negocioId
-                )
-                .maybeSingle();
+        let credenciales;
 
-        if (
-            errorCredenciales
-        ) {
+        try {
+            credenciales =
+                await obtenerCredencialesMercadoPago(
+                    negocioId
+                );
+        } catch (error) {
             console.error(
-                "Error obteniendo credenciales OAuth de Mercado Pago:",
-                errorCredenciales
+                "Error obteniendo credenciales de Mercado Pago:",
+                error
             );
 
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "No se pudieron obtener las credenciales de Mercado Pago.",
+                    error:
+                        "No se pudieron obtener las credenciales de Mercado Pago del negocio.",
                 },
                 {
                     status: 500,
@@ -320,13 +328,12 @@ export async function GET(
             );
         }
 
-        if (
-            !credenciales?.access_token_encrypted
-        ) {
+        if (!credenciales) {
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "El negocio no tiene Mercado Pago conectado.",
+                    error:
+                        "El negocio no tiene Mercado Pago conectado.",
                 },
                 {
                     status: 400,
@@ -335,75 +342,36 @@ export async function GET(
         }
 
         // =========================================================
-        // 9. VALIDAR EXPIRACIÓN DEL TOKEN
+        // 9. VALIDAR ACCESS TOKEN
         // =========================================================
+
+        const accessTokenMercadoPago =
+            credenciales.accessToken;
 
         if (
-            credenciales.expires_at
+            !accessTokenMercadoPago
         ) {
-            const expiresAt =
-                new Date(
-                    credenciales.expires_at
-                ).getTime();
-
-            const ahora =
-                Date.now();
-
-            if (
-                Number.isFinite(
-                    expiresAt
-                ) &&
-                expiresAt <= ahora
-            ) {
-                return NextResponse.json(
-                    {
-                        ok: false,
-                        error:
-                            "La autorización de Mercado Pago ha expirado. Es necesario reconectar la cuenta.",
-                    },
-                    {
-                        status: 401,
-                    }
-                );
-            }
-        }
-
-        // =========================================================
-        // 10. DESCIFRAR ACCESS TOKEN
-        // =========================================================
-
-        let accessTokenMercadoPago: string;
-
-        try {
-            accessTokenMercadoPago =
-                descifrarToken(
-                    credenciales.access_token_encrypted
-                );
-        } catch (error) {
-            console.error(
-                "Error descifrando access token de Mercado Pago:",
-                error
-            );
-
             return NextResponse.json(
                 {
                     ok: false,
                     error:
-                        "No se pudo utilizar la autorización de Mercado Pago.",
+                        "No se pudo obtener el Access Token de Mercado Pago.",
                 },
                 {
-                    status: 500,
+                    status: 401,
                 }
             );
         }
 
         // =========================================================
-        // 11. CONSULTAR ORDER EN MERCADO PAGO
+        // 10. CONSULTAR ORDER EN MERCADO PAGO
         // =========================================================
 
         const response =
             await fetch(
-                `https://api.mercadopago.com/v1/orders/${order_id}`,
+                `https://api.mercadopago.com/v1/orders/${encodeURIComponent(
+                    order_id
+                )}`,
                 {
                     method: "GET",
                     headers: {
@@ -416,11 +384,16 @@ export async function GET(
                 }
             );
 
-        const data =
-            await response.json();
+        let data: any = null;
+
+        try {
+            data = await response.json();
+        } catch {
+            data = null;
+        }
 
         // =========================================================
-        // 12. ERROR MERCADO PAGO
+        // 11. ERROR MERCADO PAGO
         // =========================================================
 
         if (!response.ok) {
@@ -430,6 +403,7 @@ export async function GET(
                     status:
                         response.status,
                     order_id,
+                    negocioId,
                     data,
                 }
             );
@@ -439,7 +413,9 @@ export async function GET(
                     ok: false,
                     status:
                         response.status,
-                    error: data,
+                    error:
+                        data ??
+                        "Mercado Pago no pudo consultar la Order.",
                 },
                 {
                     status:
@@ -449,7 +425,7 @@ export async function GET(
         }
 
         // =========================================================
-        // 13. INFORMACIÓN GENERAL DE LA ORDER
+        // 12. INFORMACIÓN GENERAL DE LA ORDER
         // =========================================================
 
         const status =
@@ -460,7 +436,7 @@ export async function GET(
             null;
 
         // =========================================================
-        // 14. OBTENER INFORMACIÓN DEL PAGO
+        // 13. OBTENER INFORMACIÓN DEL PAGO
         // =========================================================
 
         const payments =
@@ -485,25 +461,33 @@ export async function GET(
             null;
 
         // =========================================================
-        // 15. DETERMINAR SI EL PAGO FUE CONFIRMADO
+        // 14. DETERMINAR SI EL PAGO FUE CONFIRMADO
         // =========================================================
         //
-        // Para nuestro POS consideraremos exitoso solamente cuando:
+        // Para nuestro POS, el cobro se considera confirmado
+        // únicamente cuando:
         //
-        // Order = processed
-        // Pago  = processed
-        // Detalle = accredited
+        // Order:
+        //     processed
         //
+        // Pago:
+        //     processed
+        //
+        // Detalle:
+        //     accredited
+        //
+        // Mercado Pago documenta esta combinación como pago
+        // procesado y acreditado.
+        // =========================================================
 
         const pagoConfirmado =
             status === "processed" &&
-            paymentStatus ===
-            "processed" &&
+            paymentStatus === "processed" &&
             paymentStatusDetail ===
             "accredited";
 
         // =========================================================
-        // 16. ESTADO DEL PROCESO
+        // 15. DETERMINAR ESTADO PARA EL POS
         // =========================================================
 
         let estadoPOS:
@@ -515,9 +499,7 @@ export async function GET(
             | "requiere_accion"
             | "desconocido";
 
-        if (
-            pagoConfirmado
-        ) {
+        if (pagoConfirmado) {
             estadoPOS =
                 "aprobado";
         } else if (
@@ -542,20 +524,32 @@ export async function GET(
             estadoPOS =
                 "requiere_accion";
         } else if (
+            status === "created" ||
             status ===
-            "created" ||
-            status ===
-            "processing"
+            "at_terminal" ||
+            status === "processing"
         ) {
             estadoPOS =
                 "pendiente";
+        } else if (
+            status === "refunded"
+        ) {
+            // No debe ocurrir durante el cobro normal,
+            // pero lo reconocemos para mantener coherencia
+            // con los estados de Mercado Pago.
+            estadoPOS =
+                "desconocido";
         } else {
             estadoPOS =
                 "desconocido";
         }
 
         // =========================================================
-        // 17. ACTUALIZAR ESTADO LOCAL DE LA ORDER
+        // 16. ACTUALIZAR ESTADO LOCAL DE LA ORDER
+        // =========================================================
+        //
+        // Solo actualizamos la Order que pertenece al negocio
+        // autenticado.
         // =========================================================
 
         const estadoLocal =
@@ -563,7 +557,9 @@ export async function GET(
                 ? "aprobado"
                 : estadoPOS;
 
-        const { error: errorActualizacion } =
+        const {
+            error: errorActualizacion,
+        } =
             await supabaseAdmin
                 .from(
                     "mercado_pago_orders"
@@ -593,7 +589,7 @@ export async function GET(
         }
 
         // =========================================================
-        // 18. RESPUESTA PARA EL POS
+        // 17. RESPUESTA PARA EL POS
         // =========================================================
 
         return NextResponse.json(
@@ -601,7 +597,8 @@ export async function GET(
                 ok: true,
 
                 order_id:
-                    data.id,
+                    data?.id ??
+                    order_id,
 
                 status,
 
@@ -615,15 +612,16 @@ export async function GET(
                     pagoConfirmado,
 
                 external_reference:
-                    data.external_reference ??
+                    data?.external_reference ??
+                    ordenLocal.external_reference ??
                     null,
 
                 total_paid_amount:
-                    data.total_paid_amount ??
+                    data?.total_paid_amount ??
                     null,
 
                 currency:
-                    data.currency ??
+                    data?.currency ??
                     null,
 
                 payment: primerPago

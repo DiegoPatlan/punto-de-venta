@@ -4,7 +4,7 @@ import crypto from "crypto";
 
 import { createClient } from "@supabase/supabase-js";
 
-import { descifrarToken } from "../../../../../../lib/mercadopago/cifrado";
+import { obtenerCredencialesMercadoPago } from "../../../../../../lib/mercadopago/credenciales";
 
 type Params = {
     params: Promise<{
@@ -13,8 +13,11 @@ type Params = {
 };
 
 function obtenerSupabaseAdmin() {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl =
+        process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    const serviceRoleKey =
+        process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
         throw new Error(
@@ -39,6 +42,10 @@ export async function POST(
     { params }: Params
 ) {
     try {
+        // ============================================================
+        // 1. OBTENER ORDER ID
+        // ============================================================
+
         const { order_id } = await params;
 
         if (!order_id) {
@@ -54,13 +61,20 @@ export async function POST(
         }
 
         // ============================================================
-        // 1. AUTENTICAR USUARIO
+        // 2. AUTENTICAR USUARIO
         // ============================================================
 
         const authorization =
-            request.headers.get("authorization");
+            request.headers.get(
+                "authorization"
+            );
 
-        if (!authorization) {
+        if (
+            !authorization ||
+            !authorization
+                .toLowerCase()
+                .startsWith("bearer ")
+        ) {
             return NextResponse.json(
                 {
                     ok: false,
@@ -72,17 +86,17 @@ export async function POST(
             );
         }
 
-        const [tipo, accessTokenUsuario] =
-            authorization.split(" ");
+        const accessTokenUsuario =
+            authorization
+                .substring(7)
+                .trim();
 
-        if (
-            tipo !== "Bearer" ||
-            !accessTokenUsuario
-        ) {
+        if (!accessTokenUsuario) {
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "Token de autorización inválido.",
+                    error:
+                        "Token de autorización inválido.",
                 },
                 {
                     status: 401,
@@ -90,26 +104,32 @@ export async function POST(
             );
         }
 
+        // ============================================================
+        // 3. CLIENTE SUPABASE ADMIN
+        // ============================================================
+
         const supabaseAdmin =
             obtenerSupabaseAdmin();
 
+        // ============================================================
+        // 4. VALIDAR SESIÓN DE SUPABASE
+        // ============================================================
+
         const {
-            data: {
-                user,
-            },
-            error: errorUsuario,
+            data: usuarioAuth,
+            error: errorAuth,
         } =
             await supabaseAdmin.auth.getUser(
                 accessTokenUsuario
             );
 
         if (
-            errorUsuario ||
-            !user
+            errorAuth ||
+            !usuarioAuth?.user
         ) {
             console.error(
                 "Error validando usuario:",
-                errorUsuario
+                errorAuth
             );
 
             return NextResponse.json(
@@ -123,8 +143,11 @@ export async function POST(
             );
         }
 
+        const authUserId =
+            usuarioAuth.user.id;
+
         // ============================================================
-        // 2. OBTENER USUARIO Y NEGOCIO
+        // 5. OBTENER USUARIO Y NEGOCIO
         // ============================================================
 
         const {
@@ -138,7 +161,7 @@ export async function POST(
                 )
                 .eq(
                     "auth_user_id",
-                    user.id
+                    authUserId
                 )
                 .maybeSingle();
 
@@ -163,7 +186,7 @@ export async function POST(
             );
         }
 
-        if (!usuario.activo) {
+        if (usuario.activo === false) {
             return NextResponse.json(
                 {
                     ok: false,
@@ -176,7 +199,10 @@ export async function POST(
             );
         }
 
-        if (!usuario.negocio_id) {
+        const negocioId =
+            usuario.negocio_id;
+
+        if (!negocioId) {
             return NextResponse.json(
                 {
                     ok: false,
@@ -189,11 +215,8 @@ export async function POST(
             );
         }
 
-        const negocioId =
-            usuario.negocio_id;
-
         // ============================================================
-        // 3. BUSCAR LA ORDER LOCAL
+        // 6. BUSCAR ORDER LOCAL
         // ============================================================
 
         const {
@@ -201,7 +224,9 @@ export async function POST(
             error: errorOrden,
         } =
             await supabaseAdmin
-                .from("mercado_pago_orders")
+                .from(
+                    "mercado_pago_orders"
+                )
                 .select(
                     `
                     id,
@@ -252,7 +277,7 @@ export async function POST(
         }
 
         // ============================================================
-        // 4. VALIDAR QUE LA ORDER PERTENECE AL NEGOCIO
+        // 7. VALIDAR QUE LA ORDER PERTENEZCA AL NEGOCIO ACTUAL
         // ============================================================
 
         if (
@@ -263,7 +288,8 @@ export async function POST(
                 "Intento de cancelar order de otro negocio.",
                 {
                     order_id,
-                    negocioUsuario: negocioId,
+                    negocioUsuario:
+                        negocioId,
                     negocioOrden:
                         ordenLocal.negocio_id,
                 }
@@ -282,40 +308,70 @@ export async function POST(
         }
 
         // ============================================================
-        // 5. OBTENER CREDENCIALES OAUTH DEL NEGOCIO
+        // 8. VALIDAR ESTADO LOCAL
+        // ============================================================
+        //
+        // Si nuestro sistema ya sabe que fue aprobada,
+        // no debemos intentar cancelarla como si estuviera
+        // pendiente.
+        //
+        // Una Order ya procesada requiere un reembolso,
+        // no una cancelación.
         // ============================================================
 
-        const {
-            data: credenciales,
-            error: errorCredenciales,
-        } =
-            await supabaseAdmin
-                .from(
-                    "mercado_pago_credenciales"
-                )
-                .select(
-                    `
-                    access_token_encrypted,
-                    expires_at
-                    `
-                )
-                .eq(
-                    "negocio_id",
-                    negocioId
-                )
-                .maybeSingle();
+        if (
+            ordenLocal.estado ===
+            "aprobado"
+        ) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error:
+                        "El cobro ya fue aprobado. No se puede cancelar como una Order pendiente.",
+                    order_id,
+                    estado:
+                        ordenLocal.estado,
+                },
+                {
+                    status: 409,
+                }
+            );
+        }
 
-        if (errorCredenciales) {
+        // ============================================================
+        // 9. OBTENER CREDENCIALES DEL NEGOCIO
+        // ============================================================
+        //
+        // IMPORTANTE:
+        // Este helper:
+        //
+        // - busca por negocio_id
+        // - descifra el token
+        // - renueva automáticamente el Access Token
+        //   cuando está próximo a expirar
+        //
+        // De esta manera nunca usamos las credenciales
+        // de otro negocio.
+        // ============================================================
+
+        let credenciales;
+
+        try {
+            credenciales =
+                await obtenerCredencialesMercadoPago(
+                    negocioId
+                );
+        } catch (error) {
             console.error(
                 "Error obteniendo credenciales de Mercado Pago:",
-                errorCredenciales
+                error
             );
 
             return NextResponse.json(
                 {
                     ok: false,
                     error:
-                        "No se pudieron obtener las credenciales de Mercado Pago.",
+                        "No se pudieron obtener las credenciales de Mercado Pago del negocio.",
                 },
                 {
                     status: 500,
@@ -337,67 +393,27 @@ export async function POST(
         }
 
         // ============================================================
-        // 6. VALIDAR EXPIRACIÓN DEL TOKEN
+        // 10. VALIDAR ACCESS TOKEN
         // ============================================================
 
-        if (
-            credenciales.expires_at
-        ) {
-            const expiresAt =
-                new Date(
-                    credenciales.expires_at
-                ).getTime();
+        const accessToken =
+            credenciales.accessToken;
 
-            if (
-                Number.isFinite(
-                    expiresAt
-                ) &&
-                expiresAt <= Date.now()
-            ) {
-                return NextResponse.json(
-                    {
-                        ok: false,
-                        error:
-                            "La conexión con Mercado Pago ha expirado. Es necesario reconectar la cuenta.",
-                    },
-                    {
-                        status: 401,
-                    }
-                );
-            }
-        }
-
-        // ============================================================
-        // 7. DESCIFRAR ACCESS TOKEN
-        // ============================================================
-
-        let accessToken: string;
-
-        try {
-            accessToken =
-                descifrarToken(
-                    credenciales.access_token_encrypted
-                );
-        } catch (error) {
-            console.error(
-                "Error descifrando Access Token de Mercado Pago:",
-                error
-            );
-
+        if (!accessToken) {
             return NextResponse.json(
                 {
                     ok: false,
                     error:
-                        "No se pudo obtener de forma segura la conexión con Mercado Pago.",
+                        "No se pudo obtener el Access Token de Mercado Pago.",
                 },
                 {
-                    status: 500,
+                    status: 401,
                 }
             );
         }
 
         // ============================================================
-        // 8. GENERAR IDEMPOTENCY KEY
+        // 11. GENERAR IDEMPOTENCY KEY
         // ============================================================
 
         const idempotencyKey =
@@ -431,12 +447,26 @@ export async function POST(
         );
 
         // ============================================================
-        // 9. CANCELAR ORDER EN MERCADO PAGO
+        // 12. CANCELAR ORDER EN MERCADO PAGO
+        // ============================================================
+        //
+        // Mercado Pago exige:
+        //
+        // POST /v1/orders/{order_id}/cancel
+        //
+        // Authorization
+        //
+        // X-Idempotency-Key
+        //
+        // La cancelación vía API aplica cuando la Order
+        // todavía puede ser cancelada por API.
         // ============================================================
 
         const response =
             await fetch(
-                `https://api.mercadopago.com/v1/orders/${order_id}/cancel`,
+                `https://api.mercadopago.com/v1/orders/${encodeURIComponent(
+                    order_id
+                )}/cancel`,
                 {
                     method: "POST",
 
@@ -473,22 +503,124 @@ export async function POST(
         );
 
         // ============================================================
-        // 10. ERROR DE MERCADO PAGO
+        // 13. ERROR MERCADO PAGO
         // ============================================================
 
         if (!response.ok) {
             console.error(
-                "❌ ERROR CANCELANDO ORDER MERCADO PAGO:",
-                data
+                "Error cancelando Order Mercado Pago:",
+                {
+                    status:
+                        response.status,
+                    order_id,
+                    negocioId,
+                    data,
+                }
             );
+
+            // --------------------------------------------------------
+            // Si Mercado Pago indica que la Order ya fue cancelada,
+            // sincronizamos nuestro estado local.
+            // --------------------------------------------------------
+
+            const errorCode =
+                data?.error ??
+                data?.code ??
+                null;
+
+            const yaCancelada =
+                errorCode ===
+                "order_already_canceled" ||
+                data?.status ===
+                "canceled";
+
+            if (yaCancelada) {
+                const {
+                    error:
+                    errorActualizacion,
+                } =
+                    await supabaseAdmin
+                        .from(
+                            "mercado_pago_orders"
+                        )
+                        .update({
+                            estado:
+                                "cancelado",
+
+                            estado_detalle:
+                                data?.status_detail ??
+                                "order_already_canceled",
+                        })
+                        .eq(
+                            "id",
+                            ordenLocal.id
+                        )
+                        .eq(
+                            "negocio_id",
+                            negocioId
+                        );
+
+                if (
+                    errorActualizacion
+                ) {
+                    console.error(
+                        "La Order ya estaba cancelada en Mercado Pago, pero no se pudo actualizar el registro local:",
+                        errorActualizacion
+                    );
+                }
+
+                return NextResponse.json(
+                    {
+                        ok: true,
+
+                        ya_cancelada:
+                            true,
+
+                        mensaje:
+                            "La Order de Mercado Pago ya estaba cancelada.",
+
+                        order_id,
+
+                        status:
+                            "canceled",
+
+                        status_detail:
+                            data?.status_detail ??
+                            null,
+                    },
+                    {
+                        status: 200,
+                    }
+                );
+            }
+
+            // --------------------------------------------------------
+            // Caso especial:
+            //
+            // Si la Order ya llegó a la terminal, Mercado Pago
+            // puede indicar que debe cancelarse desde la terminal.
+            // --------------------------------------------------------
+
+            const noPuedeCancelarse =
+                errorCode ===
+                "cannot_cancel_order";
 
             return NextResponse.json(
                 {
                     ok: false,
+
+                    order_id,
+
                     status:
                         response.status,
+
                     error: data,
-                    order_id,
+
+                    puede_cancelarse_por_api:
+                        !noPuedeCancelarse,
+
+                    requiere_cancelacion_en_terminal:
+                        noPuedeCancelarse,
                 },
                 {
                     status:
@@ -498,16 +630,73 @@ export async function POST(
         }
 
         // ============================================================
-        // 11. ACTUALIZAR ORDER LOCAL
+        // 14. OBTENER ESTADO DEVUELTO POR MERCADO PAGO
         // ============================================================
 
-        const nuevoEstado =
+        const nuevoEstadoMercadoPago =
             data?.status ??
             "canceled";
 
         const nuevoEstadoDetalle =
             data?.status_detail ??
             null;
+
+        // ============================================================
+        // 15. VALIDAR QUE REALMENTE QUEDÓ CANCELADA
+        // ============================================================
+
+        if (
+            nuevoEstadoMercadoPago !==
+            "canceled"
+        ) {
+            console.error(
+                "Mercado Pago respondió correctamente, pero la Order no quedó en estado canceled:",
+                {
+                    order_id,
+                    status:
+                        nuevoEstadoMercadoPago,
+                    status_detail:
+                        nuevoEstadoDetalle,
+                }
+            );
+
+            return NextResponse.json(
+                {
+                    ok: false,
+
+                    error:
+                        "Mercado Pago respondió, pero la Order no quedó cancelada.",
+
+                    order_id,
+
+                    status:
+                        nuevoEstadoMercadoPago,
+
+                    status_detail:
+                        nuevoEstadoDetalle,
+
+                    data,
+                },
+                {
+                    status: 409,
+                }
+            );
+        }
+
+        // ============================================================
+        // 16. ACTUALIZAR ORDER LOCAL
+        // ============================================================
+        //
+        // Aquí usamos nuestro estado interno:
+        //
+        // Mercado Pago:
+        //     canceled
+        //
+        // POS:
+        //     cancelado
+        //
+        // Esto mantiene consistente la interfaz del POS.
+        // ============================================================
 
         const {
             error: errorActualizacion,
@@ -516,14 +705,14 @@ export async function POST(
                 .from(
                     "mercado_pago_orders"
                 )
-                .update(
-                    {
-                        estado:
-                            nuevoEstado,
-                        estado_detalle:
-                            nuevoEstadoDetalle,
-                    }
-                )
+                .update({
+                    estado:
+                        "cancelado",
+
+                    estado_detalle:
+                        nuevoEstadoDetalle ??
+                        "canceled",
+                })
                 .eq(
                     "id",
                     ordenLocal.id
@@ -533,24 +722,55 @@ export async function POST(
                     negocioId
                 );
 
-        if (errorActualizacion) {
+        if (
+            errorActualizacion
+        ) {
             console.error(
-                "⚠️ Order cancelada en Mercado Pago, pero no se pudo actualizar el registro local:",
+                "Order cancelada en Mercado Pago, pero no se pudo actualizar el registro local:",
                 errorActualizacion
+            );
+
+            // Importante:
+            // No decimos que la operación falló,
+            // porque Mercado Pago ya confirmó la cancelación.
+            return NextResponse.json(
+                {
+                    ok: true,
+
+                    sincronizacion_local:
+                        false,
+
+                    mensaje:
+                        "La Order fue cancelada en Mercado Pago, pero hubo un problema al actualizar el registro local.",
+
+                    order_id,
+
+                    status:
+                        nuevoEstadoMercadoPago,
+
+                    status_detail:
+                        nuevoEstadoDetalle,
+                },
+                {
+                    status: 200,
+                }
             );
         }
 
-        console.log(
-            "✅ ORDER CANCELADA CORRECTAMENTE"
-        );
+        // ============================================================
+        // 17. RESPUESTA EXITOSA
+        // ============================================================
 
-        // ============================================================
-        // 12. RESPUESTA
-        // ============================================================
+        console.log(
+            "ORDER CANCELADA CORRECTAMENTE"
+        );
 
         return NextResponse.json(
             {
                 ok: true,
+
+                sincronizacion_local:
+                    true,
 
                 mensaje:
                     "Order de Mercado Pago cancelada correctamente.",
@@ -560,12 +780,10 @@ export async function POST(
                     order_id,
 
                 status:
-                    data?.status ??
-                    "canceled",
+                    nuevoEstadoMercadoPago,
 
                 status_detail:
-                    data?.status_detail ??
-                    null,
+                    nuevoEstadoDetalle,
 
                 data,
             },
@@ -574,8 +792,12 @@ export async function POST(
             }
         );
     } catch (error) {
+        // ============================================================
+        // ERROR GENERAL
+        // ============================================================
+
         console.error(
-            "❌ ERROR INTERNO CANCELANDO ORDER MERCADO PAGO:",
+            "Error interno cancelando Order Mercado Pago:",
             error
         );
 

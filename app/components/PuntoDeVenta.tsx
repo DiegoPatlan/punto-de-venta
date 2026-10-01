@@ -165,8 +165,35 @@ export default function PuntoDeVenta({
     const [procesandoMercadoPago, setProcesandoMercadoPago] =
         useState(false);
 
+    /*
+    Indica que el POS está esperando la respuesta
+    del endpoint de cancelación de Mercado Pago.
+    Esto evita iniciar otro cobro mientras la
+    cancelación anterior todavía está en curso.
+    */
+    const [cancelandoMercadoPago, setCancelandoMercadoPago] =
+        useState(false);
+
+    /*
+    Identificador interno de la operación actual.
+
+    Cada nuevo cobro incrementa este valor.
+    Si el usuario cancela, también se incrementa
+    para invalidar cualquier polling anterior.
+    */
     const mercadoPagoOperacionId =
         useRef(0);
+
+    /*
+    Order de Mercado Pago actualmente asociada
+    al cobro que se está procesando.
+
+    Es importante conservarla porque el botón
+    "Cancelar cobro" necesita saber qué Order
+    debe cancelar remotamente.
+    */
+    const mercadoPagoOrderIdActual =
+        useRef<string | null>(null);
 
     /*
     ==========================================
@@ -236,14 +263,14 @@ export default function PuntoDeVenta({
                 } = await supabasePOS
                     .from("clientes")
                     .select(`
-    id,
-        nombre,
-        telefono,
-        email,
-        limite_credito,
-        saldo_credito,
-        activo
-            `)
+                        id,
+                        nombre,
+                        telefono,
+                        email,
+                        limite_credito,
+                        saldo_credito,
+                        activo
+                    `)
                     .eq(
                         "negocio_id",
                         negocioId
@@ -321,12 +348,12 @@ export default function PuntoDeVenta({
             } = await supabasePOS
                 .from("negocios")
                 .select(`
-    nombre,
-        impuestos_activos,
-        iva_porcentaje,
-        recargo_tarjeta_activo,
-        recargo_tarjeta_porcentaje
-            `)
+                    nombre,
+                    impuestos_activos,
+                    iva_porcentaje,
+                    recargo_tarjeta_activo,
+                    recargo_tarjeta_porcentaje
+                `)
                 .eq("id", negocioId)
                 .maybeSingle();
 
@@ -516,17 +543,17 @@ export default function PuntoDeVenta({
             } = await supabasePOS
                 .from("productos")
                 .select(`
-    id,
-        nombre,
-        codigo_barras,
-        sku,
-        precio_base,
-        precio_venta,
-        unidad,
-        imagen_url,
-        activo,
-        categoria_id
-            `)
+                    id,
+                    nombre,
+                    codigo_barras,
+                    sku,
+                    precio_base,
+                    precio_venta,
+                    unidad,
+                    imagen_url,
+                    activo,
+                    categoria_id
+                `)
                 .eq(
                     "negocio_id",
                     negocioId
@@ -553,17 +580,17 @@ export default function PuntoDeVenta({
                 } = await supabasePOS
                     .from("productos")
                     .select(`
-    id,
-        nombre,
-        codigo_barras,
-        sku,
-        precio_base,
-        precio_venta,
-        unidad,
-        imagen_url,
-        activo,
-        categoria_id
-            `)
+                        id,
+                        nombre,
+                        codigo_barras,
+                        sku,
+                        precio_base,
+                        precio_venta,
+                        unidad,
+                        imagen_url,
+                        activo,
+                        categoria_id
+                    `)
                     .eq(
                         "negocio_id",
                         negocioId
@@ -598,9 +625,9 @@ export default function PuntoDeVenta({
             } = await supabasePOS
                 .from("inventario")
                 .select(`
-    stock,
-        sucursal_id
-            `)
+                    stock,
+                    sucursal_id
+                `)
                 .eq(
                     "producto_id",
                     productoEncontrado.id
@@ -1620,6 +1647,25 @@ export default function PuntoDeVenta({
 
             /*
             ==========================================
+            VALIDAR NEGOCIO
+            ==========================================
+            */
+
+            if (
+                usuario.negocio_id !==
+                negocioId
+            ) {
+                mostrarMensaje(
+                    "error",
+                    "Negocio no válido",
+                    "El usuario autenticado no pertenece al negocio actual. La venta no puede registrarse."
+                );
+
+                return false;
+            }
+
+            /*
+            ==========================================
             PREPARAR PRODUCTOS
             ==========================================
             */
@@ -2188,8 +2234,14 @@ export default function PuntoDeVenta({
     async function cobrarConMercadoPago(
         montoTarjeta: number
     ): Promise<boolean> {
+        /*
+        No permitimos iniciar otro cobro mientras
+        exista una operación de cobro o cancelación
+        en curso.
+        */
         if (
-            procesandoMercadoPago
+            procesandoMercadoPago ||
+            cancelandoMercadoPago
         ) {
             return false;
         }
@@ -2229,15 +2281,17 @@ export default function PuntoDeVenta({
         ==========================================
         IDENTIFICAR OPERACIÓN
         ==========================================
-        Cada cobro tiene un ID propio.
-        Si el usuario cancela, incrementamos este
-        ID y cualquier proceso anterior queda
-        invalidado automáticamente.
-        ==========================================
         */
 
         const operacionId =
             ++mercadoPagoOperacionId.current;
+
+        /*
+        Antes de crear una nueva Order,
+        limpiamos cualquier referencia anterior.
+        */
+        mercadoPagoOrderIdActual.current =
+            null;
 
         setProcesandoMercadoPago(
             true
@@ -2257,9 +2311,9 @@ export default function PuntoDeVenta({
 
             /*
             Si el usuario canceló mientras se
-            creaba la Order, no continuamos.
+            creaba la Order, no continuamos
+            con el polling.
             */
-
             if (
                 mercadoPagoOperacionId.current !==
                 operacionId
@@ -2283,6 +2337,15 @@ export default function PuntoDeVenta({
 
             const orderId =
                 order.orderId;
+
+            /*
+            ==========================================
+            GUARDAR ORDER ACTUAL
+            ==========================================
+            */
+
+            mercadoPagoOrderIdActual.current =
+                orderId;
 
             /*
             ==========================================
@@ -2337,6 +2400,14 @@ export default function PuntoDeVenta({
                 if (
                     estado.pagoConfirmado
                 ) {
+                    /*
+                    El pago ya fue confirmado.
+                    No dejamos la referencia disponible
+                    para un intento posterior de cancelación.
+                    */
+                    mercadoPagoOrderIdActual.current =
+                        null;
+
                     return true;
                 }
 
@@ -2348,6 +2419,9 @@ export default function PuntoDeVenta({
                     estado.estado ===
                     "expirado"
                 ) {
+                    mercadoPagoOrderIdActual.current =
+                        null;
+
                     mostrarMensaje(
                         "error",
                         "Pago no aprobado",
@@ -2360,6 +2434,11 @@ export default function PuntoDeVenta({
                 if (
                     !estado.ok
                 ) {
+                    /*
+                    Conservamos el order_id para permitir
+                    que el usuario pueda cancelar la Order
+                    si todavía existe y sigue pendiente.
+                    */
                     mostrarMensaje(
                         "error",
                         "Error de Mercado Pago",
@@ -2403,17 +2482,23 @@ export default function PuntoDeVenta({
             ==========================================
             */
 
-            /*
-            Si otra operación ya invalidó esta,
-            no mostramos ningún mensaje.
-            */
-
             if (
                 mercadoPagoOperacionId.current !==
                 operacionId
             ) {
                 return false;
             }
+
+            /*
+            No cancelamos automáticamente la Order.
+
+            Esto es importante porque Mercado Pago podría
+            todavía estar procesando el cobro aunque el POS
+            haya alcanzado su tiempo máximo de espera.
+
+            Conservamos el order_id para que el usuario
+            pueda cancelarlo explícitamente.
+            */
 
             mostrarMensaje(
                 "info",
@@ -2466,23 +2551,221 @@ export default function PuntoDeVenta({
 
     /*
     ==========================================
-    MERCADO PAGO - CANCELAR ESPERA
+    MERCADO PAGO - CANCELAR COBRO
     ==========================================
     IMPORTANTE:
 
-    Esto cancela la espera/polling del POS.
+    Primero invalidamos el polling local.
 
-    No intenta cancelar la Order remotamente
-    en Mercado Pago.
+    Después llamamos al endpoint del servidor
+    para cancelar realmente la Order en Mercado Pago.
+
+    El backend vuelve a validar:
+    - usuario autenticado
+    - usuario activo
+    - negocio actual
+    - Order perteneciente al negocio
+    - credenciales de Mercado Pago del negocio
     ==========================================
     */
 
-    function cancelarMercadoPago() {
+    async function cancelarMercadoPago() {
+        /*
+        Guardamos la Order antes de invalidar
+        la operación actual.
+        */
+        const orderId =
+            mercadoPagoOrderIdActual.current;
+
+        /*
+        Invalidamos inmediatamente el polling.
+        */
         mercadoPagoOperacionId.current += 1;
 
         setProcesandoMercadoPago(
             false
         );
+
+        /*
+        Si todavía no existe una Order,
+        solamente detenemos la espera.
+        */
+        if (!orderId) {
+            mostrarMensaje(
+                "info",
+                "Cobro detenido",
+                "Se detuvo la espera del cobro. Todavía no había una orden de Mercado Pago disponible para cancelar."
+            );
+
+            return;
+        }
+
+        setCancelandoMercadoPago(
+            true
+        );
+
+        try {
+            /*
+            ==========================================
+            OBTENER SESIÓN
+            ==========================================
+            */
+
+            const {
+                data: {
+                    session,
+                },
+                error: sessionError,
+            } =
+                await supabasePOS.auth.getSession();
+
+            if (
+                sessionError ||
+                !session?.access_token
+            ) {
+                console.error(
+                    "❌ ERROR OBTENIENDO SESIÓN PARA CANCELAR MERCADO PAGO:",
+                    sessionError
+                );
+
+                mostrarMensaje(
+                    "error",
+                    "Sesión no disponible",
+                    "No se pudo obtener la sesión actual para cancelar el cobro. Inicia sesión nuevamente y verifica el estado de la Order antes de volver a cobrar."
+                );
+
+                return;
+            }
+
+            /*
+            ==========================================
+            CANCELAR ORDER EN BACKEND
+            ==========================================
+            */
+
+            const response =
+                await fetch(
+                    `/api/mercadopago/order/${encodeURIComponent(orderId)}/cancel`,
+                    {
+                        method: "POST",
+
+                        headers: {
+                            Authorization:
+                                `Bearer ${session.access_token}`,
+                        },
+
+                        cache: "no-store",
+                    }
+                );
+
+            const data =
+                await response
+                    .json()
+                    .catch(
+                        () => null
+                    );
+
+            /*
+            ==========================================
+            CANCELACIÓN CONFIRMADA
+            ==========================================
+            */
+
+            if (
+                response.ok &&
+                data?.ok &&
+                data?.status === "canceled"
+            ) {
+                mercadoPagoOrderIdActual.current =
+                    null;
+
+                mostrarMensaje(
+                    "info",
+                    "Cobro cancelado",
+                    "La orden de Mercado Pago fue cancelada correctamente. La venta no fue registrada."
+                );
+
+                return;
+            }
+
+            /*
+            ==========================================
+            CANCELACIÓN DESDE TERMINAL
+            ==========================================
+            */
+
+            if (
+                data?.requiere_cancelacion_en_terminal
+            ) {
+                mostrarMensaje(
+                    "info",
+                    "Cancelar desde la terminal",
+                    "Mercado Pago no permite cancelar esta orden desde el sistema. Cancela el cobro directamente desde la terminal Point Smart 2 y verifica su estado antes de intentar nuevamente."
+                );
+
+                return;
+            }
+
+            /*
+            ==========================================
+            ERROR DEL BACKEND / MERCADO PAGO
+            ==========================================
+            */
+
+            let mensajeError =
+                "No se pudo cancelar la orden de Mercado Pago.";
+
+            if (
+                typeof data?.error ===
+                "string"
+            ) {
+                mensajeError =
+                    data.error;
+            } else if (
+                data?.error &&
+                typeof data.error.message ===
+                "string"
+            ) {
+                mensajeError =
+                    data.error.message;
+            } else if (
+                typeof data?.message ===
+                "string"
+            ) {
+                mensajeError =
+                    data.message;
+            }
+
+            console.error(
+                "❌ ERROR CANCELANDO ORDER MERCADO PAGO:",
+                {
+                    status:
+                        response.status,
+                    data,
+                }
+            );
+
+            mostrarMensaje(
+                "error",
+                "No se pudo cancelar el cobro",
+                `${mensajeError} No intentes cobrar nuevamente hasta verificar el estado de la orden en Mercado Pago.`
+            );
+        } catch (error) {
+            console.error(
+                "❌ ERROR COMUNICANDO CANCELACIÓN MERCADO PAGO:",
+                error
+            );
+
+            mostrarMensaje(
+                "error",
+                "Error al cancelar",
+                "No se pudo confirmar la cancelación de la orden con Mercado Pago. Verifica el estado del cobro antes de intentar nuevamente."
+            );
+        } finally {
+            setCancelandoMercadoPago(
+                false
+            );
+        }
     }
 
     /*
@@ -2781,14 +3064,14 @@ export default function PuntoDeVenta({
             {(mensajeEscaner ||
                 escaneando) && (
                     <div
-                        className={`rounded - 2xl border p - 4 ${escaneando
+                        className={`rounded-2xl border p-4 ${escaneando
                             ? "border-blue-200 bg-blue-50"
                             : mensajeEscaner.startsWith(
                                 "✓"
                             )
                                 ? "border-green-200 bg-green-50"
                                 : "border-red-200 bg-red-50"
-                            } `}
+                            }`}
                     >
 
                         <div className="flex items-center gap-3">
@@ -2804,14 +3087,14 @@ export default function PuntoDeVenta({
                             </span>
 
                             <p
-                                className={`text - sm font - medium ${escaneando
+                                className={`text-sm font-medium ${escaneando
                                     ? "text-blue-700"
                                     : mensajeEscaner.startsWith(
                                         "✓"
                                     )
                                         ? "text-green-700"
                                         : "text-red-700"
-                                    } `}
+                                    }`}
                             >
                                 {escaneando
                                     ? "Procesando código..."
@@ -2991,10 +3274,10 @@ export default function PuntoDeVenta({
                         </div>
 
                         <div
-                            className={`mt - 4 rounded - xl border p - 4 ${mensajeVenta.impresion
+                            className={`mt-4 rounded-xl border p-4 ${mensajeVenta.impresion
                                 ? "border-green-200 bg-green-50"
                                 : "border-amber-200 bg-amber-50"
-                                } `}
+                                }`}
                         >
 
                             <div className="flex items-start gap-3">
@@ -3008,10 +3291,10 @@ export default function PuntoDeVenta({
                                 <div>
 
                                     <p
-                                        className={`text - sm font - semibold ${mensajeVenta.impresion
+                                        className={`text-sm font-semibold ${mensajeVenta.impresion
                                             ? "text-green-800"
                                             : "text-amber-800"
-                                            } `}
+                                            }`}
                                     >
                                         {mensajeVenta.impresion
                                             ? "Tickets enviados a impresora local"
@@ -3019,10 +3302,10 @@ export default function PuntoDeVenta({
                                     </p>
 
                                     <p
-                                        className={`mt - 1 text - xs ${mensajeVenta.impresion
+                                        className={`mt-1 text-xs ${mensajeVenta.impresion
                                             ? "text-green-700"
                                             : "text-amber-700"
-                                            } `}
+                                            }`}
                                     >
                                         {mensajeVenta.impresion
                                             ? "La venta quedó registrada y las copias fueron enviadas al servicio local."
@@ -3070,7 +3353,8 @@ export default function PuntoDeVenta({
                 }
                 onCerrar={() => {
                     if (
-                        procesandoMercadoPago
+                        procesandoMercadoPago ||
+                        cancelandoMercadoPago
                     ) {
                         return;
                     }
