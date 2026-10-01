@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "Punto de Venta",
-        "url": "/pos/login?v=adb6549",
+        "url": "/pos/login?v=01b3d28",
         "width": 800,
         "height": 600,
         "resizable": true,
