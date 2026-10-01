@@ -4,6 +4,7 @@ import {
     useEffect,
     useRef,
     useState,
+    useMemo
 } from "react";
 
 import BuscadorProductos, {
@@ -135,6 +136,32 @@ export default function PuntoDeVenta({
     const [cargandoClientes, setCargandoClientes] =
         useState(false);
 
+    const clientesFiltrados = useMemo(() => {
+        const texto = busquedaCliente
+            .trim()
+            .toLowerCase();
+
+        if (!texto) {
+            return [];
+        }
+
+        return clientes
+            .filter((cliente) => {
+                return (
+                    cliente.nombre
+                        ?.toLowerCase()
+                        .includes(texto) ||
+                    cliente.telefono
+                        ?.toLowerCase()
+                        .includes(texto) ||
+                    cliente.email
+                        ?.toLowerCase()
+                        .includes(texto)
+                );
+            })
+            .slice(0, 10);
+    }, [clientes, busquedaCliente]);
+
     /*
     ==========================================
     ESCÁNER
@@ -244,51 +271,37 @@ export default function PuntoDeVenta({
     useEffect(() => {
         let cancelado = false;
 
-        async function buscarClientes() {
-            const texto =
-                busquedaCliente.trim();
-
-            if (!texto) {
+        async function cargarClientes() {
+            if (!negocioId) {
                 setClientes([]);
-                setCargandoClientes(false);
                 return;
             }
 
             setCargandoClientes(true);
 
             try {
-                const {
-                    data,
-                    error,
-                } = await supabasePOS
+                const { data, error } = await supabasePOS
                     .from("clientes")
                     .select(`
-                        id,
-                        nombre,
-                        telefono,
-                        email,
-                        limite_credito,
-                        saldo_credito,
-                        activo
-                    `)
-                    .eq(
-                        "negocio_id",
-                        negocioId
-                    )
+                    id,
+                    nombre,
+                    telefono,
+                    email,
+                    limite_credito,
+                    saldo_credito,
+                    activo
+                `)
+                    .eq("negocio_id", negocioId)
                     .eq("activo", true)
-                    .or(
-                        `nombre.ilike.%${texto}%,telefono.ilike.%${texto}%,email.ilike.%${texto}%`
-                    )
-                    .order("nombre")
-                    .limit(10);
+                    .order("nombre", {
+                        ascending: true,
+                    });
 
-                if (cancelado) {
-                    return;
-                }
+                if (cancelado) return;
 
                 if (error) {
                     console.error(
-                        "❌ ERROR BUSCANDO CLIENTES:",
+                        "❌ ERROR CARGANDO CLIENTES:",
                         error
                     );
 
@@ -296,12 +309,10 @@ export default function PuntoDeVenta({
                     return;
                 }
 
-                setClientes(
-                    (data ?? []) as Cliente[]
-                );
+                setClientes((data ?? []) as Cliente[]);
             } catch (error) {
                 console.error(
-                    "❌ ERROR BUSCANDO CLIENTES:",
+                    "❌ ERROR CARGANDO CLIENTES:",
                     error
                 );
 
@@ -315,22 +326,12 @@ export default function PuntoDeVenta({
             }
         }
 
-        const temporizador =
-            setTimeout(
-                buscarClientes,
-                250
-            );
+        cargarClientes();
 
         return () => {
             cancelado = true;
-            clearTimeout(
-                temporizador
-            );
         };
-    }, [
-        busquedaCliente,
-        negocioId,
-    ]);
+    }, [negocioId]);
 
     /*
     ==========================================
@@ -2986,11 +2987,11 @@ export default function PuntoDeVenta({
                         )}
 
                         {!cargandoClientes &&
-                            clientes.length >
+                            clientesFiltrados.length >
                             0 && (
                                 <div className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl">
 
-                                    {clientes.map(
+                                    {clientesFiltrados.map(
                                         (
                                             cliente
                                         ) => (
