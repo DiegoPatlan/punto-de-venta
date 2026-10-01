@@ -333,6 +333,14 @@ export default function PuntoDeVenta({
         };
     }, [negocioId]);
 
+    {
+        !cargandoClientes && (
+            <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                Clientes disponibles: {clientes.length}
+            </p>
+        )
+    }
+
     /*
     ==========================================
     CARGAR NEGOCIO + IVA + RECARGO
@@ -438,12 +446,8 @@ export default function PuntoDeVenta({
     function seleccionarCliente(
         cliente: Cliente
     ) {
-        setClienteSeleccionado(
-            cliente
-        );
-
+        setClienteSeleccionado(cliente);
         setBusquedaCliente("");
-        setClientes([]);
     }
 
     /*
@@ -455,7 +459,6 @@ export default function PuntoDeVenta({
     function quitarCliente() {
         setClienteSeleccionado(null);
         setBusquedaCliente("");
-        setClientes([]);
     }
 
     /*
