@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.soporteit.puntoventa",
   "build": {
-    "frontendDist": "https://punto-ventasit.vercel.app/admin/login",
+    "frontendDist": "https://punto-ventasit.vercel.app",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
