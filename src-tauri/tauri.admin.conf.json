@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "Punto de Venta Admin",
-        "url": "/admin/login",
+        "url": "/admin/login?v=368367a",
         "width": 1200,
         "height": 800,
         "resizable": true,
