@@ -1,4 +1,4 @@
-﻿#[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -13,6 +13,12 @@ pub fn run() {
       version: 2,
       description: "create_sync_infrastructure",
       sql: include_str!("../migrations/002_sync_infrastructure.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 3,
+      description: "create_sync_queue",
+      sql: include_str!("../migrations/003_sync_queue.sql"),
       kind: MigrationKind::Up,
     },
   ];
