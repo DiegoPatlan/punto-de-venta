@@ -1000,11 +1000,115 @@ id,
                 "Estado final UPDATE: sincronizado"
             );
 
+            agregarResultado(
+                "10. Reintentando exactamente la misma operación UPDATE..."
+            );
+
+            await procesarSyncQueueItem(itemUpdate);
+
+            agregarResultado(
+                "Reintento UPDATE ejecutado correctamente."
+            );
+
+            agregarResultado(
+                "11. Verificando nuevamente los datos en Supabase..."
+            );
+
+            const {
+                data: clienteSupabaseReintento,
+                error: errorSupabaseReintento,
+            } = await supabasePOS
+                .from("clientes")
+                .select(
+                    `
+                        id,
+                        negocio_id,
+                        nombre,
+                        telefono,
+                        limite_credito,
+                        saldo_credito,
+                        activo
+                    `
+                )
+                .eq("id", clienteId)
+                .maybeSingle();
+
+            if (errorSupabaseReintento) {
+                throw new Error(
+                    `No fue posible verificar el reintento UPDATE en Supabase: ${errorSupabaseReintento.message}`
+                );
+            }
+
+            if (!clienteSupabaseReintento) {
+                throw new Error(
+                    "El cliente no fue encontrado en Supabase después del reintento UPDATE."
+                );
+            }
+
+            if (
+                clienteSupabaseReintento.id !==
+                clienteId
+            ) {
+                throw new Error(
+                    "El UUID del cliente cambió durante el reintento UPDATE."
+                );
+            }
+
+            if (
+                clienteSupabaseReintento.negocio_id !==
+                usuarioPOS.negocio_id
+            ) {
+                throw new Error(
+                    "El cliente terminó asociado a un negocio incorrecto después del reintento."
+                );
+            }
+
+            if (
+                clienteSupabaseReintento.nombre !==
+                clienteActualizado.nombre
+            ) {
+                throw new Error(
+                    "El nombre cambió incorrectamente después del reintento UPDATE."
+                );
+            }
+
+            if (
+                clienteSupabaseReintento.telefono !==
+                clienteActualizado.telefono
+            ) {
+                throw new Error(
+                    "El teléfono cambió incorrectamente después del reintento UPDATE."
+                );
+            }
+
+            if (
+                Number(clienteSupabaseReintento.limite_credito) !==
+                clienteActualizado.limite_credito
+            ) {
+                throw new Error(
+                    "El limite_credito cambió incorrectamente después del reintento UPDATE."
+                );
+            }
+
+            if (
+                Number(clienteSupabaseReintento.saldo_credito) !==
+                clienteActualizado.saldo_credito
+            ) {
+                throw new Error(
+                    "El saldo_credito cambió incorrectamente después del reintento UPDATE."
+                );
+            }
+
+            agregarResultado(
+                "Datos Supabase después del reintento: correctos."
+            );
+
             mostrarModal(
                 "exito",
-                "UPDATE sincronizado",
-                "El UPDATE SQLite → sync_queue → Supabase terminó correctamente."
+                "Reintento UPDATE correcto",
+                "La misma operación UPDATE pudo ejecutarse nuevamente y los datos permanecieron correctos."
             );
+
         } catch (error) {
             const mensaje =
                 error instanceof Error
@@ -1156,4 +1260,6 @@ id,
         </>
     );
 }
+
+
 
