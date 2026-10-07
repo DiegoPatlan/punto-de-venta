@@ -76,21 +76,35 @@ function obtenerPayloadCliente(
     );
   }
 
-  if (cliente.saldo_credito === undefined) {
-    throw new Error(
-      "El payload del cliente no contiene saldo_credito."
-    );
-  }
-
-  if (cliente.activo === undefined) {
-    throw new Error(
-      "El payload del cliente no contiene activo."
-    );
-  }
-
   if (!cliente.created_at) {
     throw new Error(
       "El payload del cliente no contiene created_at."
+    );
+  }
+
+  const limiteCredito = Number(
+    cliente.limite_credito
+  );
+
+  const saldoCredito = Number(
+    cliente.saldo_credito
+  );
+
+  if (
+    !Number.isFinite(limiteCredito) ||
+    limiteCredito < 0
+  ) {
+    throw new Error(
+      "El limite_credito del cliente no es un número válido."
+    );
+  }
+
+  if (
+    !Number.isFinite(saldoCredito) ||
+    saldoCredito < 0
+  ) {
+    throw new Error(
+      "El saldo_credito del cliente no es un número válido."
     );
   }
 
@@ -102,12 +116,8 @@ function obtenerPayloadCliente(
     email: cliente.email ?? null,
     direccion: cliente.direccion ?? null,
     rfc: cliente.rfc ?? null,
-    limite_credito: Number(
-      cliente.limite_credito
-    ),
-    saldo_credito: Number(
-      cliente.saldo_credito
-    ),
+    limite_credito: limiteCredito,
+    saldo_credito: saldoCredito,
     activo: Number(cliente.activo),
     created_at: cliente.created_at,
   };
