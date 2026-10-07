@@ -667,6 +667,362 @@ id,
         }
     }
 
+    async function ejecutarPruebaUpdate() {
+        if (procesando) return;
+
+        setProcesando(true);
+        setResultado([]);
+
+        try {
+            agregarResultado("1. Obteniendo usuario POS...");
+
+            const usuarioPOS = await obtenerUsuarioPOS();
+
+            if (
+                !usuarioPOS ||
+                !usuarioPOS.id ||
+                !usuarioPOS.negocio_id
+            ) {
+                throw new Error(
+                    "No existe un usuario POS autenticado con negocio_id válido."
+                );
+            }
+
+            agregarResultado(`Usuario POS: ${usuarioPOS.nombre}`);
+            agregarResultado(`Negocio: ${usuarioPOS.negocio_id}`);
+
+            agregarResultado("2. Generando cliente de prueba...");
+
+            const clienteId = crypto.randomUUID();
+            const ahora = new Date().toISOString();
+
+            const clienteInicial: ClientePrueba = {
+                id: clienteId,
+                negocio_id: usuarioPOS.negocio_id,
+                nombre:
+                    `PRUEBA UPDATE v1.6.0 ${new Date().toLocaleString("es-MX")}`,
+                telefono: null,
+                email: null,
+                direccion: null,
+                rfc: null,
+                limite_credito: 0,
+                saldo_credito: 0,
+                activo: 1,
+                created_at: ahora,
+            };
+
+            agregarResultado(`UUID generado: ${clienteId}`);
+
+            const db = await getSQLiteDatabase();
+
+            agregarResultado("3. Insertando cliente inicial en SQLite...");
+
+            await db.execute(
+                `
+                    INSERT INTO clientes (
+                        id,
+                        negocio_id,
+                        nombre,
+                        telefono,
+                        email,
+                        direccion,
+                        rfc,
+                        limite_credito,
+                        saldo_credito,
+                        activo,
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                `,
+                [
+                    clienteInicial.id,
+                    clienteInicial.negocio_id,
+                    clienteInicial.nombre,
+                    clienteInicial.telefono,
+                    clienteInicial.email,
+                    clienteInicial.direccion,
+                    clienteInicial.rfc,
+                    clienteInicial.limite_credito,
+                    clienteInicial.saldo_credito,
+                    clienteInicial.activo,
+                    clienteInicial.created_at,
+                ]
+            );
+
+            agregarResultado("4. Encolando INSERT inicial...");
+
+            const insertQueueId = await agregarSyncQueue({
+                entidad: "clientes",
+                operacion: "insert",
+                registro_id: clienteInicial.id,
+                payload: clienteInicial,
+            });
+
+            const pendientesInsert =
+                await obtenerSyncQueuePendientes();
+
+            const itemInsert = pendientesInsert.find(
+                (elemento) => elemento.id === insertQueueId
+            );
+
+            if (!itemInsert) {
+                throw new Error(
+                    "No fue posible recuperar la operación INSERT."
+                );
+            }
+
+            await procesarSyncQueueItem(itemInsert);
+
+            agregarResultado(
+                "INSERT inicial sincronizado correctamente."
+            );
+
+            agregarResultado("5. Modificando cliente en SQLite...");
+
+            const clienteActualizado: ClientePrueba = {
+                ...clienteInicial,
+                nombre: `${clienteInicial.nombre} - ACTUALIZADO`,
+                telefono: "4770000000",
+                limite_credito: 500,
+                saldo_credito: 125,
+            };
+
+            await db.execute(
+                `
+                    UPDATE clientes
+                    SET
+                        nombre = ?,
+                        telefono = ?,
+                        email = ?,
+                        direccion = ?,
+                        rfc = ?,
+                        limite_credito = ?,
+                        saldo_credito = ?,
+                        activo = ?,
+                        created_at = ?
+                    WHERE id = ?;
+                `,
+                [
+                    clienteActualizado.nombre,
+                    clienteActualizado.telefono,
+                    clienteActualizado.email,
+                    clienteActualizado.direccion,
+                    clienteActualizado.rfc,
+                    clienteActualizado.limite_credito,
+                    clienteActualizado.saldo_credito,
+                    clienteActualizado.activo,
+                    clienteActualizado.created_at,
+                    clienteActualizado.id,
+                ]
+            );
+
+            const clienteLocalActualizado =
+                await obtenerClientePorId(clienteId);
+
+            if (!clienteLocalActualizado) {
+                throw new Error(
+                    "El cliente actualizado no fue encontrado en SQLite."
+                );
+            }
+
+            agregarResultado(
+                `Nuevo nombre local: ${clienteLocalActualizado.nombre}`
+            );
+
+            agregarResultado(
+                `Nuevo teléfono local: ${clienteLocalActualizado.telefono}`
+            );
+
+            agregarResultado(
+                `Nuevo límite local: ${clienteLocalActualizado.limite_credito}`
+            );
+
+            agregarResultado(
+                `Nuevo saldo local: ${clienteLocalActualizado.saldo_credito}`
+            );
+
+            agregarResultado("6. Encolando UPDATE...");
+
+            const updateQueueId = await agregarSyncQueue({
+                entidad: "clientes",
+                operacion: "update",
+                registro_id: clienteActualizado.id,
+                payload: clienteActualizado,
+            });
+
+            const pendientesUpdate =
+                await obtenerSyncQueuePendientes();
+
+            const itemUpdate = pendientesUpdate.find(
+                (elemento) => elemento.id === updateQueueId
+            );
+
+            if (!itemUpdate) {
+                throw new Error(
+                    "No fue posible recuperar la operación UPDATE."
+                );
+            }
+
+            agregarResultado(
+                `Estado UPDATE inicial: ${itemUpdate.estado}`
+            );
+
+            agregarResultado(
+                "7. Enviando UPDATE a Supabase..."
+            );
+
+            await procesarSyncQueueItem(itemUpdate);
+
+            agregarResultado(
+                "UPDATE enviado correctamente a Supabase."
+            );
+
+            agregarResultado(
+                "8. Verificando cambios en Supabase..."
+            );
+
+            const {
+                data: clienteSupabase,
+                error: errorSupabase,
+            } = await supabasePOS
+                .from("clientes")
+                .select(
+                    `
+                        id,
+                        negocio_id,
+                        nombre,
+                        telefono,
+                        limite_credito,
+                        saldo_credito,
+                        activo
+                    `
+                )
+                .eq("id", clienteId)
+                .maybeSingle();
+
+            if (errorSupabase) {
+                throw new Error(
+                    `No fue posible verificar el UPDATE en Supabase: ${errorSupabase.message}`
+                );
+            }
+
+            if (!clienteSupabase) {
+                throw new Error(
+                    "El cliente no fue encontrado en Supabase después del UPDATE."
+                );
+            }
+
+            if (clienteSupabase.id !== clienteId) {
+                throw new Error(
+                    "El UUID del cliente cambió durante la sincronización."
+                );
+            }
+
+            if (
+                clienteSupabase.negocio_id !==
+                usuarioPOS.negocio_id
+            ) {
+                throw new Error(
+                    "El cliente terminó asociado a un negocio incorrecto."
+                );
+            }
+
+            if (
+                clienteSupabase.nombre !==
+                clienteActualizado.nombre
+            ) {
+                throw new Error(
+                    "El nombre no se actualizó correctamente en Supabase."
+                );
+            }
+
+            if (
+                clienteSupabase.telefono !==
+                clienteActualizado.telefono
+            ) {
+                throw new Error(
+                    "El teléfono no se actualizó correctamente en Supabase."
+                );
+            }
+
+            if (
+                Number(clienteSupabase.limite_credito) !==
+                clienteActualizado.limite_credito
+            ) {
+                throw new Error(
+                    "El limite_credito no se actualizó correctamente en Supabase."
+                );
+            }
+
+            if (
+                Number(clienteSupabase.saldo_credito) !==
+                clienteActualizado.saldo_credito
+            ) {
+                throw new Error(
+                    "El saldo_credito no se actualizó correctamente en Supabase."
+                );
+            }
+
+            agregarResultado(
+                `Nombre Supabase: ${clienteSupabase.nombre}`
+            );
+
+            agregarResultado(
+                `Teléfono Supabase: ${clienteSupabase.telefono}`
+            );
+
+            agregarResultado(
+                `Límite Supabase: ${clienteSupabase.limite_credito}`
+            );
+
+            agregarResultado(
+                `Saldo Supabase: ${clienteSupabase.saldo_credito}`
+            );
+
+            agregarResultado(
+                "9. Verificando estado final de sync_queue..."
+            );
+
+            const pendientesFinales =
+                await obtenerSyncQueuePendientes();
+
+            const itemFinal = pendientesFinales.find(
+                (elemento) => elemento.id === updateQueueId
+            );
+
+            if (itemFinal) {
+                throw new Error(
+                    `La operación UPDATE continúa en la cola con estado "${itemFinal.estado}".`
+                );
+            }
+
+            agregarResultado(
+                "Estado final UPDATE: sincronizado"
+            );
+
+            mostrarModal(
+                "exito",
+                "UPDATE sincronizado",
+                "El UPDATE SQLite → sync_queue → Supabase terminó correctamente."
+            );
+        } catch (error) {
+            const mensaje =
+                error instanceof Error
+                    ? error.message
+                    : String(error);
+
+            agregarResultado(`ERROR: ${mensaje}`);
+
+            mostrarModal(
+                "error",
+                "Error en la prueba UPDATE",
+                mensaje
+            );
+        } finally {
+            setProcesando(false);
+        }
+    }
+
     return (
         <>
             <main className="min-h-screen bg-slate-100 p-4 sm:p-6">
@@ -733,6 +1089,31 @@ id,
                         </button>
                     </section>
 
+                    
+                    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div>
+                            <h2 className="font-semibold text-slate-900">
+                                3. UPDATE de cliente
+                            </h2>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                                Crea un cliente temporal, lo sincroniza y
+                                prueba una actualización SQLite → Supabase.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={ejecutarPruebaUpdate}
+                            disabled={procesando}
+                            className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {procesando
+                                ? "Ejecutando prueba..."
+                                : "Probar UPDATE"}
+                        </button>
+                    </section>
+
                     {resultado.length > 0 && (
                         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                             <h2 className="font-semibold text-slate-900">
@@ -775,3 +1156,4 @@ id,
         </>
     );
 }
+
