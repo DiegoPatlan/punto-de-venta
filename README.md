@@ -1,15 +1,43 @@
 
-# 🛒 Sistema de Punto de Venta Multi-Negocios — Soporte IT
+<div align="center">
 
-Sistema de punto de venta desarrollado para facilitar la administración y operación de negocios mediante herramientas de gestión comercial, control de inventario y seguimiento de operaciones.
+# 🛒 Punto de Venta Multi-Negocios
 
-La plataforma cuenta con un panel administrativo y un módulo de Punto de Venta (POS), con interfaces adaptables a diferentes dispositivos.
+### Plataforma web de gestión comercial | Soporte IT
 
-🌐 **Aplicación web:** https://punto-de-ventasit.vercel.app/admin/login
+Sistema integral para la administración de negocios, diseñado para centralizar operaciones comerciales, inventario, ventas y gestión administrativa desde una sola plataforma.
+
+<br>
+
+[**Ver aplicación web**](https://punto-ventasit.vercel.app) ·
+[**Panel administrativo**](https://punto-ventasit.vercel.app/admin/login) ·
+[**Punto de Venta**](https://punto-ventasit.vercel.app/pos/login)
+
+<br>
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![React](https://img.shields.io/badge/React-19-20232A?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
+![Supabase](https://img.shields.io/badge/Supabase-Backend-3FCF8E?logo=supabase)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)
+
+</div>
 
 ---
 
-## 🚀 Características principales
+## 01 · Acerca del proyecto
+
+Punto de Venta Multi-Negocios es una aplicación web desarrollada para facilitar la administración y operación de diferentes establecimientos.
+
+Integra herramientas de gestión comercial, control de inventario, seguimiento financiero y operaciones de caja, mediante dos módulos principales:
+
+| Módulo | Descripción |
+|:---|:---|
+| **Panel de Administración** | Gestión centralizada de las operaciones, configuración y supervisión del negocio. |
+| **Punto de Venta (POS)** | Interfaz para realizar ventas y gestionar las operaciones cotidianas de caja. |
+
+### Funcionalidades principales
 
 - Gestión de productos, categorías y proveedores.
 - Registro y administración de ventas y compras.
@@ -21,445 +49,421 @@ La plataforma cuenta con un panel administrativo y un módulo de Punto de Venta 
 - Gestión de devoluciones y gastos.
 - Configuración fiscal e impuestos.
 - Consulta de reportes y cuentas por pagar.
-- Configuración de impresoras para tickets de compra.
+- Configuración de impresoras para tickets.
 - Personalización de la apariencia del sistema.
 
-## 🏗️ Arquitectura del sistema
+---
 
-El proyecto utiliza una arquitectura web basada en Next.js y Supabase, separando la interfaz de usuario de los servicios de autenticación y almacenamiento de información.
+## 02 · Tecnologías
 
-**Componentes principales:**
-
-- **Frontend:** Next.js, React y TypeScript.
-- **Backend y servicios:** Supabase.
-- **Base de datos:** PostgreSQL.
-- **Autenticación:** Supabase Auth.
-- **Control de acceso:** Roles y permisos de usuario.
-- **Despliegue:** Vercel.
-
-El sistema está organizado en dos módulos principales:
-
-- **Panel de Administración:** permite gestionar y supervisar las operaciones del negocio.
-- **Punto de Venta (POS):** permite realizar ventas y administrar las operaciones cotidianas de caja.
-
-La aplicación contempla la separación de información por negocio y el control de acceso a los datos mediante mecanismos de seguridad de Supabase.
-
-## 🛠️ Tecnologías utilizadas
+Tecnologías y herramientas utilizadas durante el desarrollo.
 
 ### Frontend
 
-<table>
-  <tr>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=nextjs" width="40"><br>
-      <b>Next.js</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=react" width="40"><br>
-      <b>React</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=ts" width="40"><br>
-      <b>TypeScript</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=js" width="40"><br>
-      <b>JavaScript</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=tailwind" width="40"><br>
-      <b>Tailwind CSS</b>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=nextjs,react,ts,js,tailwind" />
+</p>
+
+<p align="center">
+  <sub>Next.js · React · TypeScript · JavaScript · Tailwind CSS</sub>
+</p>
 
 ### Backend y base de datos
 
-<table>
-  <tr>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=supabase" width="40"><br>
-      <b>Supabase</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=postgres" width="40"><br>
-      <b>PostgreSQL</b>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=supabase,postgres" />
+</p>
+
+<p align="center">
+  <sub>Supabase · PostgreSQL</sub>
+</p>
 
 ### Herramientas y despliegue
 
-<table>
-  <tr>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=git" width="40"><br>
-      <b>Git</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=github" width="40"><br>
-      <b>GitHub</b>
-    </td>
-    <td align="center" width="120">
-      <img src="https://skillicons.dev/icons?i=vercel" width="40"><br>
-      <b>Vercel</b>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=git,github,vercel" />
+</p>
 
-### Librerías
+<p align="center">
+  <sub>Git · GitHub · Vercel</sub>
+</p>
 
-- ExcelJS
-- XLSX
-
-## 🎯 Objetivo del proyecto
-
-Desarrollar una plataforma que permita administrar las principales operaciones de un negocio desde una interfaz intuitiva, adaptable y fácil de utilizar, integrando herramientas de gestión comercial, inventario, ventas y administración.
-
-## 👨‍💻 Desarrollador
-
-Proyecto desarrollado como iniciativa personal para aplicar y fortalecer conocimientos en desarrollo de software, diseño de interfaces, integración de servicios backend y gestión de bases de datos.
+**Librerías adicionales:** ExcelJS y XLSX.
 
 ---
 
-## 🔐 Accesos de demostración
+## 03 · Arquitectura del sistema
 
-La aplicación cuenta con dos módulos independientes:
+La aplicación utiliza Next.js como framework principal y Supabase para los servicios backend, autenticación y almacenamiento de información.
 
-**🛡️ Panel de Administración**
+```text
+                 USUARIO
+                    │
+                    ▼
+          ┌──────────────────┐
+          │    NEXT.JS       │
+          │  Aplicación Web  │
+          └──────────────────┘
+                    │
+          ┌─────────┴─────────┐
+          ▼                   ▼
+  ┌──────────────┐    ┌──────────────┐
+  │   PANEL      │    │     POS      │
+  │ ADMINISTRATIVO│   │ Punto de Venta│
+  └──────────────┘    └──────────────┘
+          │                   │
+          └─────────┬─────────┘
+                    ▼
+          ┌──────────────────┐
+          │     SUPABASE     │
+          │ Auth y servicios │
+          └──────────────────┘
+                    │
+                    ▼
+          ┌──────────────────┐
+          │   POSTGRESQL     │
+          │   Base de datos  │
+          └──────────────────┘
+```
 
-https://punto-ventasit.vercel.app/admin/login
+**Componentes principales:**
 
-Permite explorar las herramientas de administración y configuración del negocio.
+- Frontend: Next.js, React y TypeScript.
+- Backend y servicios: Supabase.
+- Base de datos: PostgreSQL.
+- Autenticación: Supabase Auth.
+- Control de acceso: roles y permisos de usuario.
+- Despliegue: Vercel.
 
-**🛒 Punto de Venta (POS)**
-
-https://punto-ventasit.vercel.app/pos/login
-
-Permite explorar las funciones de venta, clientes, productos y operaciones de caja.
-
-> **Nota:** Los accesos de demostración se pueden solicitar directamente al desarrollador.
+La aplicación contempla la separación de información por negocio y mecanismos de seguridad mediante Supabase.
 
 ---
 
-# 🖥️ Panel de Administración
+## 04 · Panel de Administración
 
-El panel administrativo permite gestionar y supervisar las diferentes operaciones del negocio desde una plataforma centralizada.
+Módulo orientado a la gestión centralizada de las operaciones comerciales y administrativas del negocio.
 
-## 🔐 Acceso al sistema
+### Acceso y dashboard
+
+<p align="center">
+  <a href="screenshots/loginadmin.png">
+    <img src="screenshots/loginadmin.png" width="390" alt="Inicio de sesión administrativo">
+  </a>
+  <br>
+  <sub><b>01. Inicio de sesión</b></sub>
+</p>
+
+<p align="center">
+  <a href="screenshots/dashboardadmin.png">
+    <img src="screenshots/dashboardadmin.png" width="550" alt="Dashboard administrativo">
+  </a>
+  <br>
+  <sub><b>02. Dashboard general</b></sub>
+</p>
+
+### Gestión comercial
+
+Administración de los elementos principales del catálogo y de las relaciones comerciales.
 
 <table>
   <tr>
-    <td align="center">
-      <a href="screenshots/loginadmin.png">
-        <img src="screenshots/loginadmin.png" width="320" alt="Inicio de sesión administrativo">
-      </a>
-      <br><sub><b>Inicio de sesión administrativo</b></sub>
-    </td>
-    <td align="center">
-      <a href="screenshots/dashboardadmin.png">
-        <img src="screenshots/dashboardadmin.png" width="320" alt="Dashboard administrativo">
-      </a>
-      <br><sub><b>Dashboard principal</b></sub>
-    </td>
-  </tr>
-</table>
-
-## 📦 Gestión comercial
-
-Administración del catálogo de productos, categorías, clientes y proveedores.
-
-<table>
-  <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/productosadmin.png">
-        <img src="screenshots/productosadmin.png" width="320" alt="Productos">
+        <img src="screenshots/productosadmin.png" width="100%" alt="Productos">
       </a>
-      <br><sub><b>Productos</b></sub>
+      <br><b>Productos</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/categoriasadmin.png">
-        <img src="screenshots/categoriasadmin.png" width="320" alt="Categorías">
+        <img src="screenshots/categoriasadmin.png" width="100%" alt="Categorías">
       </a>
-      <br><sub><b>Categorías</b></sub>
+      <br><b>Categorías</b>
     </td>
   </tr>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/clientesadmin.png">
-        <img src="screenshots/clientesadmin.png" width="320" alt="Clientes">
+        <img src="screenshots/clientesadmin.png" width="100%" alt="Clientes">
       </a>
-      <br><sub><b>Clientes</b></sub>
+      <br><b>Clientes</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/proveedoresadmin.png">
-        <img src="screenshots/proveedoresadmin.png" width="320" alt="Proveedores">
+        <img src="screenshots/proveedoresadmin.png" width="100%" alt="Proveedores">
       </a>
-      <br><sub><b>Proveedores</b></sub>
+      <br><b>Proveedores</b>
     </td>
   </tr>
 </table>
 
-## 💰 Operaciones comerciales
+### Operaciones comerciales
 
-Módulos para administrar las operaciones de venta, compras, devoluciones y gastos.
+Módulos para el seguimiento y administración de las operaciones del negocio.
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/ventasadmin.png">
-        <img src="screenshots/ventasadmin.png" width="320" alt="Ventas">
+        <img src="screenshots/ventasadmin.png" width="100%" alt="Ventas">
       </a>
-      <br><sub><b>Ventas</b></sub>
+      <br><b>Ventas</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/comprasadmin.png">
-        <img src="screenshots/comprasadmin.png" width="320" alt="Compras">
+        <img src="screenshots/comprasadmin.png" width="100%" alt="Compras">
       </a>
-      <br><sub><b>Compras</b></sub>
+      <br><b>Compras</b>
     </td>
   </tr>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/devolucionesadmin.png">
-        <img src="screenshots/devolucionesadmin.png" width="320" alt="Devoluciones">
+        <img src="screenshots/devolucionesadmin.png" width="100%" alt="Devoluciones">
       </a>
-      <br><sub><b>Devoluciones</b></sub>
+      <br><b>Devoluciones</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/gastosadmin.png">
-        <img src="screenshots/gastosadmin.png" width="320" alt="Gastos">
+        <img src="screenshots/gastosadmin.png" width="100%" alt="Gastos">
       </a>
-      <br><sub><b>Gastos</b></sub>
+      <br><b>Gastos</b>
     </td>
   </tr>
 </table>
 
-## 📋 Control de inventario
+### Inventario y logística
 
-Herramientas para consultar existencias, registrar movimientos y gestionar traspasos de mercancía.
+Consulta de existencias, seguimiento de movimientos y gestión de traspasos de mercancía.
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/inventarioadmin.png">
-        <img src="screenshots/inventarioadmin.png" width="320" alt="Inventario">
+        <img src="screenshots/inventarioadmin.png" width="100%" alt="Inventario">
       </a>
-      <br><sub><b>Inventario</b></sub>
+      <br><b>Inventario</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/movimientosinventarioadmin.png">
-        <img src="screenshots/movimientosinventarioadmin.png" width="320" alt="Movimientos de inventario">
+        <img src="screenshots/movimientosinventarioadmin.png" width="100%" alt="Movimientos de inventario">
       </a>
-      <br><sub><b>Movimientos de inventario</b></sub>
+      <br><b>Movimientos de inventario</b>
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="2">
+    <td colspan="2" align="center">
       <a href="screenshots/transpasosadmin.png">
-        <img src="screenshots/transpasosadmin.png" width="320" alt="Traspasos">
+        <img src="screenshots/transpasosadmin.png" width="70%" alt="Traspasos">
       </a>
-      <br><sub><b>Traspasos</b></sub>
+      <br><b>Traspasos</b>
     </td>
   </tr>
 </table>
 
-## 🏢 Administración del negocio
+### Administración del negocio
 
-Gestión de cajas, sucursales y usuarios del sistema.
+Control de cajas, sucursales y usuarios con acceso al sistema.
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/cajasadmin.png">
-        <img src="screenshots/cajasadmin.png" width="320" alt="Cajas">
+        <img src="screenshots/cajasadmin.png" width="100%" alt="Cajas">
       </a>
-      <br><sub><b>Cajas</b></sub>
+      <br><b>Cajas</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/sucursalesadmin.png">
-        <img src="screenshots/sucursalesadmin.png" width="320" alt="Sucursales">
+        <img src="screenshots/sucursalesadmin.png" width="100%" alt="Sucursales">
       </a>
-      <br><sub><b>Sucursales</b></sub>
+      <br><b>Sucursales</b>
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="2">
+    <td colspan="2" align="center">
       <a href="screenshots/usuariosadmin.png">
-        <img src="screenshots/usuariosadmin.png" width="320" alt="Usuarios">
+        <img src="screenshots/usuariosadmin.png" width="70%" alt="Usuarios">
       </a>
-      <br><sub><b>Usuarios y roles</b></sub>
+      <br><b>Usuarios y roles</b>
     </td>
   </tr>
 </table>
 
-## 📈 Finanzas y reportes
+### Finanzas y reportes
 
-Consulta y seguimiento de información financiera y operativa.
+Herramientas para consultar información financiera y operativa.
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/cuentasporpagaradmin.png">
-        <img src="screenshots/cuentasporpagaradmin.png" width="320" alt="Cuentas por pagar">
+        <img src="screenshots/cuentasporpagaradmin.png" width="100%" alt="Cuentas por pagar">
       </a>
-      <br><sub><b>Cuentas por pagar</b></sub>
+      <br><b>Cuentas por pagar</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/reportesadmin.png">
-        <img src="screenshots/reportesadmin.png" width="320" alt="Reportes">
+        <img src="screenshots/reportesadmin.png" width="100%" alt="Reportes">
       </a>
-      <br><sub><b>Reportes</b></sub>
+      <br><b>Reportes</b>
     </td>
   </tr>
 </table>
 
-## ⚙️ Configuración del sistema
+### Configuración
 
-El sistema incluye opciones para adaptar diferentes parámetros de funcionamiento del negocio:
+Opciones para adaptar parámetros de funcionamiento y presentación del negocio.
 
 - Configuración fiscal e impuestos.
 - Integración y configuración de terminales de Mercado Pago.
-- Personalización de la apariencia e identidad visual del negocio.
+- Personalización de la apariencia e identidad visual.
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="screenshots/configuracionadmin.png">
-        <img src="screenshots/configuracionadmin.png" width="320" alt="Configuración administrativa">
-      </a>
-      <br><sub><b>Configuración del sistema</b></sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="screenshots/configuracionadmin.png">
+    <img src="screenshots/configuracionadmin.png" width="550" alt="Configuración administrativa">
+  </a>
+  <br>
+  <sub><b>Configuración general del negocio</b></sub>
+</p>
 
 ---
 
-# 🛒 Punto de Venta (POS)
+## 05 · Punto de Venta (POS)
 
-Módulo diseñado para realizar las operaciones comerciales del negocio, permitiendo gestionar ventas, clientes, productos y movimientos de caja desde una interfaz intuitiva.
+Módulo diseñado para las operaciones cotidianas de venta, atención a clientes y administración de caja.
 
-## 🔐 Acceso al sistema
+### Acceso y pantalla de ventas
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="screenshots/loginpos.png">
-        <img src="screenshots/loginpos.png" width="320" alt="Inicio de sesión POS">
-      </a>
-      <br><sub><b>Inicio de sesión POS</b></sub>
-    </td>
-    <td align="center">
-      <a href="screenshots/puntodeventapos.png">
-        <img src="screenshots/puntodeventapos.png" width="320" alt="Pantalla principal de ventas">
-      </a>
-      <br><sub><b>Pantalla principal de ventas</b></sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="screenshots/loginpos.png">
+    <img src="screenshots/loginpos.png" width="390" alt="Inicio de sesión POS">
+  </a>
+  <br>
+  <sub><b>01. Acceso al punto de venta</b></sub>
+</p>
 
-## 📦 Productos y clientes
+<p align="center">
+  <a href="screenshots/puntodeventapos.png">
+    <img src="screenshots/puntodeventapos.png" width="550" alt="Pantalla principal POS">
+  </a>
+  <br>
+  <sub><b>02. Pantalla principal de ventas</b></sub>
+</p>
 
-Consulta de productos disponibles y administración de clientes del negocio.
+### Productos y clientes
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/productospos.png">
-        <img src="screenshots/productospos.png" width="320" alt="Productos POS">
+        <img src="screenshots/productospos.png" width="100%" alt="Productos POS">
       </a>
-      <br><sub><b>Productos</b></sub>
+      <br><b>Productos</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/clientespos.png">
-        <img src="screenshots/clientespos.png" width="320" alt="Clientes POS">
+        <img src="screenshots/clientespos.png" width="100%" alt="Clientes POS">
       </a>
-      <br><sub><b>Clientes y crédito</b></sub>
+      <br><b>Clientes y crédito</b>
     </td>
   </tr>
 </table>
 
 El módulo de clientes permite registrar nuevos clientes, consultar su información y gestionar aquellos que realizan compras mediante crédito.
 
-## 🧾 Historial de ventas y devoluciones
-
-Consulta de las ventas realizadas y gestión de devoluciones de productos.
+### Historial y devoluciones
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/historialdeventaspos.png">
-        <img src="screenshots/historialdeventaspos.png" width="320" alt="Historial de ventas">
+        <img src="screenshots/historialdeventaspos.png" width="100%" alt="Historial de ventas POS">
       </a>
-      <br><sub><b>Historial de ventas</b></sub>
+      <br><b>Historial de ventas</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/devolucionespos.png">
-        <img src="screenshots/devolucionespos.png" width="320" alt="Devoluciones POS">
+        <img src="screenshots/devolucionespos.png" width="100%" alt="Devoluciones POS">
       </a>
-      <br><sub><b>Devoluciones</b></sub>
+      <br><b>Devoluciones</b>
     </td>
   </tr>
 </table>
 
-## 💵 Gestión de caja
+### Administración de caja
 
-Herramientas para supervisar las operaciones y movimientos relacionados con la caja.
+Seguimiento de movimientos, consulta de operaciones y cierre de caja.
 
 <table>
   <tr>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/infodecajapos.png">
-        <img src="screenshots/infodecajapos.png" width="320" alt="Información de caja">
+        <img src="screenshots/infodecajapos.png" width="100%" alt="Información de caja">
       </a>
-      <br><sub><b>Información y movimientos</b></sub>
+      <br><b>Información y movimientos</b>
     </td>
-    <td align="center">
+    <td width="50%" align="center">
       <a href="screenshots/resumendecajapos.png">
-        <img src="screenshots/resumendecajapos.png" width="320" alt="Resumen de caja">
+        <img src="screenshots/resumendecajapos.png" width="100%" alt="Resumen de caja">
       </a>
-      <br><sub><b>Resumen de caja</b></sub>
+      <br><b>Resumen de caja</b>
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="2">
+    <td colspan="2" align="center">
       <a href="screenshots/cierredecajapos.png">
-        <img src="screenshots/cierredecajapos.png" width="320" alt="Cierre de caja">
+        <img src="screenshots/cierredecajapos.png" width="70%" alt="Cierre de caja">
       </a>
-      <br><sub><b>Cierre de caja</b></sub>
+      <br><b>Cierre de caja</b>
     </td>
   </tr>
 </table>
 
-## ⚙️ Configuración del POS
+### Configuración del POS
 
-El módulo cuenta con opciones para adaptar el funcionamiento y la apariencia de la interfaz.
+Opciones para adaptar el funcionamiento y la apariencia de la interfaz.
 
-Entre sus funcionalidades se encuentran:
-
-- Configuración de impresoras para la impresión de tickets de compra.
+- Configuración de impresoras para la impresión de tickets.
 - Personalización de la apariencia de la interfaz.
 - Configuración de opciones del punto de venta.
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="screenshots/configuracionpos.png">
-        <img src="screenshots/configuracionpos.png" width="320" alt="Configuración del POS">
-      </a>
-      <br><sub><b>Configuración del POS</b></sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="screenshots/configuracionpos.png">
+    <img src="screenshots/configuracionpos.png" width="550" alt="Configuración POS">
+  </a>
+  <br>
+  <sub><b>Configuración del punto de venta</b></sub>
+</p>
 
 ---
 
-## 🖥️ Versión de escritorio
+## 06 · Acceso de demostración
 
-Se contempla una versión de escritorio desarrollada con **Tauri**, actualmente en desarrollo.
+La aplicación cuenta con dos accesos independientes:
 
-## 📌 Estado del proyecto
+| Módulo | Acceso |
+|:---|:---|
+| Administración | [Abrir panel administrativo](https://punto-ventasit.vercel.app/admin/login) |
+| Punto de Venta | [Abrir POS](https://punto-ventasit.vercel.app/pos/login) |
 
-La aplicación web se encuentra desplegada y disponible para demostración.
+Las credenciales de demostración pueden solicitarse directamente al desarrollador.
 
-La versión de escritorio continúa en desarrollo.
+---
+
+## 07 · Estado del proyecto
+
+**Aplicación web:** desplegada y disponible para demostración.
+
+**Versión de escritorio:** desarrollo en preparación mediante Tauri.
+
+---
+
+<div align="center">
+
+### Desarrollado por Diego Uriel Patlán Salas
+
+Proyecto personal de desarrollo de software.
+
+**Punto de Venta — Soporte IT**
+
+</div>
