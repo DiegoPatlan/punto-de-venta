@@ -469,20 +469,8 @@ Opciones para adaptar el funcionamiento y la apariencia de la interfaz.
 
 ---
 
-## 06 · Acceso de demostración
 
-La aplicación cuenta con dos accesos independientes:
-
-| Módulo | Acceso |
-|:---|:---|
-| Administración | [Abrir panel administrativo](https://punto-ventasit.vercel.app/admin/login) |
-| Punto de Venta | [Abrir POS](https://punto-ventasit.vercel.app/pos/login) |
-
-Las credenciales de demostración pueden solicitarse directamente al desarrollador.
-
----
-
-## 07 · Estado del proyecto
+## 06 · Estado del proyecto
 
 **Aplicación web:** desplegada y disponible para demostración.
 
