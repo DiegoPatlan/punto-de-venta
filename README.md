@@ -136,6 +136,45 @@ La aplicación utiliza Next.js como framework principal y Supabase para los serv
 
 La aplicación contempla la separación de información por negocio y mecanismos de seguridad mediante Supabase.
 
+
+## 🔐 Accesos de demostración
+
+Puedes explorar los dos módulos de la plataforma utilizando cuentas de prueba.
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <h3>🖥️ Panel administrativo</h3>
+      <p>Acceso a las herramientas de administración y configuración del negocio.</p>
+      <a href="https://punto-ventasit.vercel.app/admin/login">
+        <strong>ABRIR PANEL ADMINISTRATIVO ↗</strong>
+      </a>
+      <br><br>
+      <b>Correo:</b><br>
+      admin@tiendademo.com
+      <br><br>
+      <b>Contraseña:</b><br>
+      Admin123
+    </td>
+    <td align="center" width="50%">
+      <h3>🛒 Punto de Venta (POS)</h3>
+      <p>Acceso al módulo de ventas, clientes, productos y operaciones de caja.</p>
+      <a href="https://punto-ventasit.vercel.app/pos/login">
+        <strong>ABRIR PUNTO DE VENTA ↗</strong>
+      </a>
+      <br><br>
+      <b>Correo:</b><br>
+      salaspatlandiego@gmail.com
+      <br><br>
+      <b>Contraseña:</b><br>
+      Uriel123
+    </td>
+  </tr>
+</table>
+
+> **Nota:** Las cuentas son exclusivamente para demostración. Se recomienda utilizar usuarios independientes, con información de prueba y permisos limitados.
+
+
 ---
 
 ## 04 · Panel de Administración
