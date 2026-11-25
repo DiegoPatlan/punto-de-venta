@@ -85,50 +85,61 @@ Tecnologías y herramientas utilizadas durante el desarrollo.
 
 ---
 
+
 ## 03 · Arquitectura del sistema
 
-La aplicación utiliza Next.js como framework principal y Supabase para los servicios backend, autenticación y almacenamiento de información.
+La plataforma está construida con una arquitectura web que integra **Next.js** y **Supabase**, permitiendo centralizar la operación comercial, la administración del negocio y el almacenamiento de información.
+
+### Flujo general de la aplicación
 
 ```text
-                 USUARIO
-                    │
-                    ▼
-          ┌──────────────────┐
-          │    NEXT.JS       │
-          │  Aplicación Web  │
-          └──────────────────┘
-                    │
-          ┌─────────┴─────────┐
-          ▼                   ▼
-  ┌──────────────┐    ┌──────────────┐
-  │   PANEL      │    │     POS      │
-  │ ADMINISTRATIVO│   │ Punto de Venta│
-  └──────────────┘    └──────────────┘
-          │                   │
-          └─────────┬─────────┘
-                    ▼
-          ┌──────────────────┐
-          │     SUPABASE     │
-          │ Auth y servicios │
-          └──────────────────┘
-                    │
-                    ▼
-          ┌──────────────────┐
-          │   POSTGRESQL     │
-          │   Base de datos  │
-          └──────────────────┘
+                         USUARIO
+                            │
+                            ▼
+                    NEXT.JS + REACT
+                      Aplicación Web
+                            │
+                 ┌──────────┴──────────┐
+                 ▼                     ▼
+          PANEL ADMINISTRATIVO    PUNTO DE VENTA
+                 │                     │
+                 └──────────┬──────────┘
+                            ▼
+                         SUPABASE
+                            │
+                  ┌─────────┴─────────┐
+                  ▼                   ▼
+             SUPABASE AUTH        SERVICIOS
+                  │                   │
+                  └─────────┬─────────┘
+                            ▼
+                        POSTGRESQL
+                        Base de datos
 ```
 
-**Componentes principales:**
+### Tecnologías y servicios
 
-- Frontend: Next.js, React y TypeScript.
-- Backend y servicios: Supabase.
-- Base de datos: PostgreSQL.
-- Autenticación: Supabase Auth.
-- Control de acceso: roles y permisos de usuario.
-- Despliegue: Vercel.
+- **Frontend:** Next.js, React y TypeScript.
+- **Backend:** Supabase.
+- **Base de datos:** PostgreSQL.
+- **Autenticación:** Supabase Auth.
+- **Seguridad:** gestión de roles y mecanismos de control de acceso.
+- **Despliegue:** Vercel.
 
-La aplicación contempla la separación de información por negocio y mecanismos de seguridad mediante Supabase.
+### Estructura funcional
+
+**Panel administrativo**
+
+Gestión centralizada de productos, inventario, ventas, compras, clientes, proveedores, sucursales, usuarios y configuración del negocio.
+
+**Punto de Venta (POS)**
+
+Módulo orientado a las operaciones diarias: registro de ventas, gestión de clientes, movimientos de caja, devoluciones e historial de operaciones.
+
+**Arquitectura multi-negocio**
+
+Estructura diseñada para administrar diferentes negocios, manteniendo organizada y separada su información.
+
 
 
 ## 🔐 Accesos de demostración
