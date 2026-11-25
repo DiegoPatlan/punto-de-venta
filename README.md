@@ -1,60 +1,92 @@
 
-# 🛒 Sistema de Punto de Venta
+# 🛒 Sistema de Punto de Venta Multi-Negocios — Soporte IT
 
-Sistema de punto de venta desarrollado para facilitar la administración de negocios mediante herramientas de gestión comercial.
+Sistema de punto de venta desarrollado para facilitar la administración y operación de negocios mediante herramientas de gestión comercial, control de inventario y seguimiento de operaciones.
+
+La plataforma cuenta con un panel administrativo y un módulo de Punto de Venta (POS), con interfaces adaptables a diferentes dispositivos.
+
+🌐 **Aplicación web:** https://punto-ventasit.vercel.app
 
 ## 🚀 Características principales
 
-- Gestión de productos y categorías.
-- Registro y administración de ventas.
-- Control de inventario.
-- Administración de clientes.
-- Gestión de cajas y movimientos.
+- Gestión de productos, categorías y proveedores.
+- Registro y administración de ventas y compras.
+- Control de inventario y movimientos de mercancía.
+- Administración de clientes y ventas a crédito.
+- Gestión de cajas y movimientos de efectivo.
 - Administración de usuarios y roles.
-- Control de sucursales.
+- Control de sucursales y traspasos.
+- Gestión de devoluciones y gastos.
+- Configuración fiscal e impuestos.
+- Consulta de reportes y cuentas por pagar.
+- Configuración de impresoras para tickets de compra.
+- Personalización de la apariencia del sistema.
+
+## 🏗️ Arquitectura del sistema
+
+El proyecto utiliza una arquitectura web basada en Next.js y Supabase, separando la interfaz de usuario de los servicios de autenticación y almacenamiento de información.
+
+**Componentes principales:**
+
+- **Frontend:** Next.js, React y TypeScript.
+- **Backend y servicios:** Supabase.
+- **Base de datos:** PostgreSQL.
+- **Autenticación:** Supabase Auth.
+- **Control de acceso:** Roles y permisos de usuario.
+- **Despliegue:** Vercel.
+
+El sistema está organizado en dos módulos principales:
+
+- **Panel de Administración:** permite gestionar y supervisar las operaciones del negocio.
+- **Punto de Venta (POS):** permite realizar ventas y administrar las operaciones cotidianas de caja.
+
+La aplicación contempla la separación de información por negocio y el control de acceso a los datos mediante mecanismos de seguridad de Supabase.
 
 ## 🛠️ Tecnologías utilizadas
 
-- Next.js
-- React
-- TypeScript
-- JavaScript
-- Supabase
-- PostgreSQL
-- Git y GitHub
+| Tecnología | Uso |
+|---|---|
+| Next.js 16 | Framework de desarrollo web |
+| React 19 | Construcción de interfaces |
+| TypeScript 5 | Tipado estático |
+| JavaScript | Lógica de programación |
+| Tailwind CSS 4 | Estilos e interfaz |
+| Supabase | Servicios backend y autenticación |
+| PostgreSQL | Base de datos relacional |
+| ExcelJS | Manejo de archivos Excel |
+| XLSX | Lectura y procesamiento de hojas de cálculo |
+| Git y GitHub | Control de versiones |
+| Vercel | Despliegue de la aplicación |
 
 ## 🎯 Objetivo del proyecto
 
-Desarrollar una plataforma que permita administrar las principales operaciones de un negocio desde una interfaz intuitiva, adaptable y fácil de utilizar.
+Desarrollar una plataforma que permita administrar las principales operaciones de un negocio desde una interfaz intuitiva, adaptable y fácil de utilizar, integrando herramientas de gestión comercial, inventario, ventas y administración.
 
 ## 👨‍💻 Desarrollador
 
-Proyecto desarrollado como iniciativa personal para aplicar y fortalecer conocimientos en desarrollo de software.
+Proyecto desarrollado como iniciativa personal para aplicar y fortalecer conocimientos en desarrollo de software, diseño de interfaces, integración de servicios backend y gestión de bases de datos.
 
-## 🔐 Accesos de demostración
+---
 
-El sistema cuenta con dos módulos independientes, cada uno con su propio acceso:
+# 🔐 Accesos de demostración
+
+La aplicación cuenta con dos módulos independientes:
 
 ### 🛡️ Panel de Administración
 
 **URL:** https://punto-ventasit.vercel.app/admin/login
 
-| Campo | Credencial |
-|---|---|
-| Correo | admin@tiendademo.com |
-| Contraseña | Admin123 |
+Permite explorar las herramientas de administración y configuración del negocio.
 
 ### 🛒 Punto de Venta (POS)
 
 **URL:** https://punto-ventasit.vercel.app/pos/login
 
-| Campo | Credencial |
-|---|---|
-| Correo | salaspatlandiego@gmail.com |
-| Contraseña | Uriel123 |
+Permite explorar las funciones de venta, clientes, productos y operaciones de caja.
 
-> **Nota:** Estas credenciales son exclusivamente para fines de demostración y permiten explorar las funcionalidades del sistema.
+> **Nota:** Los accesos de demostración se pueden solicitar directamente al desarrollador. Se utilizan cuentas de prueba para evitar exponer credenciales en el repositorio público.
 
+---
 
 # 🖥️ Panel de Administración
 
@@ -62,7 +94,7 @@ El panel administrativo permite gestionar y supervisar las diferentes operacione
 
 ## 🔐 Inicio de sesión
 
-Acceso seguro al módulo administrativo mediante autenticación de usuarios.
+Acceso al módulo administrativo mediante autenticación de usuarios.
 
 ![Login administrativo](screenshots/loginadmin.png)
 
@@ -146,10 +178,11 @@ El sistema incluye opciones para adaptar diferentes parámetros de funcionamient
 
 - Configuración fiscal e impuestos.
 - Integración y configuración de terminales de Mercado Pago.
-- Personalización de la apariencia del negocio.
+- Personalización de la apariencia e identidad visual del negocio.
 
 ![Configuración del sistema](screenshots/configuracionadmin.png)
 
+---
 
 # 🛒 Punto de Venta (POS)
 
@@ -227,6 +260,16 @@ Entre sus funcionalidades se encuentran:
 
 ![Configuración POS](screenshots/configuracionpos.png)
 
+---
 
+# 🖥️ Versión de escritorio
 
+Se contempla una versión de escritorio desarrollada con **Tauri**, actualmente en desarrollo.
 
+---
+
+# 📌 Estado del proyecto
+
+La aplicación web se encuentra desplegada y disponible para demostración.
+
+La versión de escritorio continúa en desarrollo.
