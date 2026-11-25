@@ -31,10 +31,6 @@ Desarrollar una plataforma que permita administrar las principales operaciones d
 
 Proyecto desarrollado como iniciativa personal para aplicar y fortalecer conocimientos en desarrollo de software.
 
-
-## 🔐 Accesos al sistema
-
-
 ## 🔐 Accesos de demostración
 
 El sistema cuenta con dos módulos independientes, cada uno con su propio acceso:
