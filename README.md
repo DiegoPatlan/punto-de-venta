@@ -43,26 +43,76 @@ El sistema está organizado en dos módulos principales:
 La aplicación contempla la separación de información por negocio y el control de acceso a los datos mediante mecanismos de seguridad de Supabase.
 
 
+
 ## 🛠️ Tecnologías utilizadas
 
-### Frontend
-<p align="left">
-  <img src="https://skillicons.dev/icons?i=nextjs,react,ts,js,tailwind" />
+### 💻 Frontend
+
+<p align="center">
+  <a href="https://nextjs.org/">
+    <img src="https://skillicons.dev/icons?i=nextjs" width="55" /><br>
+    Next.js
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://react.dev/">
+    <img src="https://skillicons.dev/icons?i=react" width="55" /><br>
+    React
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://www.typescriptlang.org/">
+    <img src="https://skillicons.dev/icons?i=ts" width="55" /><br>
+    TypeScript
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://developer.mozilla.org/es/docs/Web/JavaScript">
+    <img src="https://skillicons.dev/icons?i=js" width="55" /><br>
+    JavaScript
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://tailwindcss.com/">
+    <img src="https://skillicons.dev/icons?i=tailwind" width="55" /><br>
+    Tailwind CSS
+  </a>
 </p>
 
-### Backend y base de datos
-<p align="left">
-  <img src="https://skillicons.dev/icons?i=supabase,postgres" />
+### 🗄️ Backend y base de datos
+
+<p align="center">
+  <a href="https://supabase.com/">
+    <img src="https://skillicons.dev/icons?i=supabase" width="55" /><br>
+    Supabase
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://www.postgresql.org/">
+    <img src="https://skillicons.dev/icons?i=postgres" width="55" /><br>
+    PostgreSQL
+  </a>
 </p>
 
-### Herramientas y despliegue
-<p align="left">
-  <img src="https://skillicons.dev/icons?i=git,github,vercel" />
+### 🔧 Herramientas y despliegue
+
+<p align="center">
+  <a href="https://git-scm.com/">
+    <img src="https://skillicons.dev/icons?i=git" width="55" /><br>
+    Git
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/">
+    <img src="https://skillicons.dev/icons?i=github" width="55" /><br>
+    GitHub
+  </a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://vercel.com/">
+    <img src="https://skillicons.dev/icons?i=vercel" width="55" /><br>
+    Vercel
+  </a>
 </p>
 
-### Librerías
+### 📚 Librerías
+
 - ExcelJS
 - XLSX
+
 
 ## 🎯 Objetivo del proyecto
 
