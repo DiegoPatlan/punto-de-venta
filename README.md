@@ -44,75 +44,74 @@ La aplicación contempla la separación de información por negocio y el control
 
 
 
+
 ## 🛠️ Tecnologías utilizadas
 
-### 💻 Frontend
+### Frontend
 
-<p align="center">
-  <a href="https://nextjs.org/">
-    <img src="https://skillicons.dev/icons?i=nextjs" width="55" /><br>
-    Next.js
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://react.dev/">
-    <img src="https://skillicons.dev/icons?i=react" width="55" /><br>
-    React
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://www.typescriptlang.org/">
-    <img src="https://skillicons.dev/icons?i=ts" width="55" /><br>
-    TypeScript
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://developer.mozilla.org/es/docs/Web/JavaScript">
-    <img src="https://skillicons.dev/icons?i=js" width="55" /><br>
-    JavaScript
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://tailwindcss.com/">
-    <img src="https://skillicons.dev/icons?i=tailwind" width="55" /><br>
-    Tailwind CSS
-  </a>
-</p>
+<table>
+  <tr>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=nextjs" width="40"><br>
+      <b>Next.js</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=react" width="40"><br>
+      <b>React</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=ts" width="40"><br>
+      <b>TypeScript</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=js" width="40"><br>
+      <b>JavaScript</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=tailwind" width="40"><br>
+      <b>Tailwind CSS</b>
+    </td>
+  </tr>
+</table>
 
-### 🗄️ Backend y base de datos
+### Backend y base de datos
 
-<p align="center">
-  <a href="https://supabase.com/">
-    <img src="https://skillicons.dev/icons?i=supabase" width="55" /><br>
-    Supabase
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://www.postgresql.org/">
-    <img src="https://skillicons.dev/icons?i=postgres" width="55" /><br>
-    PostgreSQL
-  </a>
-</p>
+<table>
+  <tr>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=supabase" width="40"><br>
+      <b>Supabase</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=postgres" width="40"><br>
+      <b>PostgreSQL</b>
+    </td>
+  </tr>
+</table>
 
-### 🔧 Herramientas y despliegue
+### Herramientas y despliegue
 
-<p align="center">
-  <a href="https://git-scm.com/">
-    <img src="https://skillicons.dev/icons?i=git" width="55" /><br>
-    Git
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/">
-    <img src="https://skillicons.dev/icons?i=github" width="55" /><br>
-    GitHub
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://vercel.com/">
-    <img src="https://skillicons.dev/icons?i=vercel" width="55" /><br>
-    Vercel
-  </a>
-</p>
+<table>
+  <tr>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=git" width="40"><br>
+      <b>Git</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=github" width="40"><br>
+      <b>GitHub</b>
+    </td>
+    <td align="center" width="120">
+      <img src="https://skillicons.dev/icons?i=vercel" width="40"><br>
+      <b>Vercel</b>
+    </td>
+  </tr>
+</table>
 
-### 📚 Librerías
+### Librerías
 
 - ExcelJS
 - XLSX
-
 
 ## 🎯 Objetivo del proyecto
 
