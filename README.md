@@ -151,4 +151,82 @@ El sistema incluye opciones para adaptar diferentes parámetros de funcionamient
 ![Configuración del sistema](screenshots/configuracionadmin.png)
 
 
+# 🛒 Punto de Venta (POS)
+
+Módulo diseñado para realizar las operaciones comerciales del negocio, permitiendo gestionar ventas, clientes, productos y movimientos de caja desde una interfaz intuitiva.
+
+## 🔐 Inicio de sesión
+
+Acceso independiente para los usuarios encargados de operar el punto de venta.
+
+![Inicio de sesión POS](screenshots/loginpos.png)
+
+## 🛍️ Pantalla principal de ventas
+
+Interfaz principal para realizar operaciones de venta, consultar productos y gestionar el proceso de compra.
+
+![Punto de Venta](screenshots/puntodeventapos.png)
+
+## 📦 Productos
+
+Consulta y selección de productos disponibles para realizar operaciones comerciales.
+
+![Productos POS](screenshots/productospos.png)
+
+## 👥 Gestión de clientes y crédito
+
+Permite registrar nuevos clientes del negocio y consultar su información.
+
+El módulo contempla la gestión de clientes que pueden realizar compras mediante crédito, facilitando el seguimiento de sus operaciones.
+
+![Clientes POS](screenshots/clientespos.png)
+
+## 🧾 Historial de ventas
+
+Consulta de las ventas realizadas desde el punto de venta.
+
+![Historial de ventas](screenshots/historialdeventaspos.png)
+
+## 🔄 Devoluciones
+
+Módulo para gestionar las devoluciones de productos.
+
+![Devoluciones POS](screenshots/devolucionespos.png)
+
+## 💵 Gestión de caja
+
+Herramientas para supervisar las operaciones y movimientos relacionados con la caja.
+
+### Información y movimientos de caja
+
+Consulta de los movimientos registrados durante la operación de caja.
+
+![Información de caja](screenshots/infodecajapos.png)
+
+### Resumen de caja
+
+Consulta del resumen de las operaciones de caja.
+
+![Resumen de caja](screenshots/resumendecajapos.png)
+
+### Cierre de caja
+
+Interfaz para realizar el proceso de cierre de caja.
+
+![Cierre de caja](screenshots/cierredecajapos.png)
+
+## ⚙️ Configuración del POS
+
+El módulo cuenta con opciones para adaptar el funcionamiento y la apariencia de la interfaz.
+
+Entre sus funcionalidades se encuentran:
+
+- Configuración de impresoras para la impresión de tickets de compra.
+- Personalización de la apariencia de la interfaz.
+- Configuración de opciones del punto de venta.
+
+![Configuración POS](screenshots/configuracionpos.png)
+
+
+
 
