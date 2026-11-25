@@ -42,21 +42,27 @@ El sistema está organizado en dos módulos principales:
 
 La aplicación contempla la separación de información por negocio y el control de acceso a los datos mediante mecanismos de seguridad de Supabase.
 
+
 ## 🛠️ Tecnologías utilizadas
 
-| Tecnología | Uso |
-|---|---|
-| Next.js 16 | Framework de desarrollo web |
-| React 19 | Construcción de interfaces |
-| TypeScript 5 | Tipado estático |
-| JavaScript | Lógica de programación |
-| Tailwind CSS 4 | Estilos e interfaz |
-| Supabase | Servicios backend y autenticación |
-| PostgreSQL | Base de datos relacional |
-| ExcelJS | Manejo de archivos Excel |
-| XLSX | Lectura y procesamiento de hojas de cálculo |
-| Git y GitHub | Control de versiones |
-| Vercel | Despliegue de la aplicación |
+### Frontend
+<p align="left">
+  <img src="https://skillicons.dev/icons?i=nextjs,react,ts,js,tailwind" />
+</p>
+
+### Backend y base de datos
+<p align="left">
+  <img src="https://skillicons.dev/icons?i=supabase,postgres" />
+</p>
+
+### Herramientas y despliegue
+<p align="left">
+  <img src="https://skillicons.dev/icons?i=git,github,vercel" />
+</p>
+
+### Librerías
+- ExcelJS
+- XLSX
 
 ## 🎯 Objetivo del proyecto
 
