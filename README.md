@@ -9,7 +9,6 @@ Sistema integral para la administración de negocios, diseñado para centralizar
 
 <br>
 
-[**Ver aplicación web**](https://punto-ventasit.vercel.app) ·
 [**Panel administrativo**](https://punto-ventasit.vercel.app/admin/login) ·
 [**Punto de Venta**](https://punto-ventasit.vercel.app/pos/login)
 
