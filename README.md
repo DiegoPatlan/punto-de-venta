@@ -5,7 +5,7 @@ Sistema de punto de venta desarrollado para facilitar la administración y opera
 
 La plataforma cuenta con un panel administrativo y un módulo de Punto de Venta (POS), con interfaces adaptables a diferentes dispositivos.
 
-🌐 **Aplicación web:** https://punto-ventasit.vercel.app
+🌐 **Aplicación web:** https://punto-de-ventasit.vercel.app/admin/login
 
 ## 🚀 Características principales
 
